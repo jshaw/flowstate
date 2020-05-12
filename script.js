@@ -47,9 +47,6 @@ document.onkeydown = function(evt) {
     opc.toggleConnection();
   }
 };
-window.ondevicemotion = function(evt) {
-  opc.toggleConnection();
-};
 
 resizeCanvas();
 

@@ -103,7 +103,7 @@ OPC = function (host, layoutFile, mainCanvas, overlayCanvas, stateHandler) {
   }
 
   var _onStateChange = function(evt) {
-    if (self.connecting_without_websockify) {
+    if (evt.type == 'error' && self.connecting_without_websockify) {
       // Connecting without websockify didn't work; try again with websockify.
       // This will fall back to setups using websockify as a proxy to a true
       // openpixelcontrol server.
