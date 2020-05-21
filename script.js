@@ -52,6 +52,13 @@ statusText.onclick = function(evt) {
   opc.toggleConnection();
 };
 
+let stats = new Stats();
+stats.setMode(0);
+stats.domElement.style.position = "absolute";
+stats.domElement.style.left= "0px";
+stats.domElement.style.bottom = "0px";
+document.body.appendChild(stats.domElement);
+
 resizeCanvas();
 
 
@@ -1107,6 +1114,8 @@ let colorUpdateTimer = 0.0;
 update();
 
 function update () {
+    stats.begin();
+
     const dt = calcDeltaTime();
     if (resizeCanvas())
         initFramebuffers();
@@ -1118,6 +1127,7 @@ function update () {
 
     opc.send();
 
+    stats.end();
     requestAnimationFrame(update);
 }
 
