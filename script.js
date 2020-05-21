@@ -29,6 +29,7 @@ SOFTWARE.
 // Simulation code
 
 const canvas = document.getElementById('mainCanvas');
+const statusText = document.getElementById('statusText');
 
 let opc = new OPC(
   (location.protocol == 'https:' ? 'wss' : 'ws') + '://' +
@@ -38,7 +39,7 @@ let opc = new OPC(
   document.getElementById('overlayCanvas'),
   function(state) {
     console.log("connection state:", state);
-    document.getElementById('statusText').textContent = state;
+    statusText.textContent = state;
   });
 
 document.onkeydown = function(evt) {
@@ -46,6 +47,9 @@ document.onkeydown = function(evt) {
   if (evt.keyCode == 27) {
     opc.toggleConnection();
   }
+};
+statusText.onclick = function(evt) {
+  opc.toggleConnection();
 };
 
 resizeCanvas();
@@ -201,13 +205,14 @@ function supportRenderTextureFormat (gl, internalFormat, format, type) {
 
 function startGUI () {
     var gui = new dat.GUI({ width: 300 });
-    gui.add(config, 'DYE_RESOLUTION', { 'high': 1024, 'medium': 512, 'low': 256, 'very low': 128 }).name('quality').onFinishChange(initFramebuffers);
-    gui.add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
+    gui.add(config, 'DYE_RESOLUTION', { '1024': 1024, '512': 512, '256': 256, '128': 128, '64': 64 }).name('quality').onFinishChange(initFramebuffers);
+    gui.add(config, 'SIM_RESOLUTION', { '8': 8, '16': 16, '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
     gui.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion');
     gui.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('velocity diffusion');
     gui.add(config, 'PRESSURE', 0.0, 1.0).name('pressure');
     gui.add(config, 'CURL', 0, 50).name('vorticity').step(1);
     gui.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('splat radius');
+    gui.add(config, 'SPLAT_FORCE', 0, 12000).name('splat velocity');
     gui.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords);
     gui.add(config, 'COLORFUL').name('colorful');
     gui.add(config, 'PAUSED').name('paused').listen();
@@ -1096,7 +1101,6 @@ function updateKeywords () {
 
 updateKeywords();
 initFramebuffers();
-multipleSplats(parseInt(Math.random() * 20) + 5);
 
 let lastUpdateTime = Date.now();
 let colorUpdateTimer = 0.0;
