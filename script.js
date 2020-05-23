@@ -703,9 +703,8 @@ const splatShader = compileShader(gl.FRAGMENT_SHADER, `
     void main () {
         vec2 p = vUv - point.xy;
         p.x *= aspectRatio;
-        vec3 splat = exp(-dot(p, p) / radius) * color;
         vec3 base = texture2D(uTarget, vUv).xyz;
-        gl_FragColor = vec4(base + splat, 1.0);
+        gl_FragColor = vec4(mix(base, color, exp(-dot(p, p) / radius)), 1.0);
     }
 `);
 
@@ -1168,7 +1167,7 @@ function applyInputs () {
         multipleSplats(splatStack.pop());
 
     pointers.forEach(p => {
-        if (p.moved) {
+        if (p.down || p.moved) {
             p.moved = false;
             splatPointer(p);
         }
@@ -1523,9 +1522,6 @@ function correctDeltaY (delta) {
 
 function generateColor () {
     let c = HSVtoRGB(Math.random(), 1.0, 1.0);
-    c.r *= 0.15;
-    c.g *= 0.15;
-    c.b *= 0.15;
     return c;
 }
 
