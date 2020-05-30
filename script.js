@@ -38,7 +38,6 @@ let opc = new OPC(
   canvas,
   document.getElementById('overlayCanvas'),
   function(state) {
-    console.log("connection state:", state);
     statusText.textContent = state;
   });
 
@@ -242,8 +241,9 @@ function startGUI () {
     captureFolder.add(config, 'TRANSPARENT').name('transparent');
     captureFolder.add({ fun: captureScreenshot }, 'fun').name('take screenshot');
 
-    if (isMobile())
+    if (isMobile()) {
         gui.close();
+    }
 }
 
 function isMobile () {
@@ -1521,7 +1521,7 @@ function correctDeltaY (delta) {
 }
 
 function generateColor () {
-    let c = HSVtoRGB(Math.random(), 1.0, 1.0);
+    let c = HSVtoRGB(Math.random(), Math.random(), 1.0);
     return c;
 }
 
