@@ -63,49 +63,35 @@ resizeCanvas();
 
 
 let config = {
-    SIM_RESOLUTION: 128,
-    DYE_RESOLUTION: 1024,
+    SIM_RESOLUTION: 32,
+    DYE_RESOLUTION: 256,
     CAPTURE_RESOLUTION: 512,
     DENSITY_DISSIPATION: 1,
     VELOCITY_DISSIPATION: 0.2,
     PRESSURE: 0.8,
     PRESSURE_ITERATIONS: 20,
     CURL: 30,
-    SPLAT_RADIUS: 0.25,
+    SPLAT_RADIUS: 0.1,
     SPLAT_FORCE: 6000,
-    SHADING: true,
+    SHADING: false,
     COLORFUL: true,
     COLOR_UPDATE_SPEED: 10,
     PAUSED: false,
     BACK_COLOR: { r: 0, g: 0, b: 0 },
     TRANSPARENT: false,
-    BLOOM: true,
+    BLOOM: false,
     BLOOM_ITERATIONS: 8,
     BLOOM_RESOLUTION: 256,
     BLOOM_INTENSITY: 0.8,
     BLOOM_THRESHOLD: 0.6,
     BLOOM_SOFT_KNEE: 0.7,
-    SUNRAYS: true,
+    SUNRAYS: false,
     SUNRAYS_RESOLUTION: 196,
     SUNRAYS_WEIGHT: 1.0,
 }
 
-function pointerPrototype () {
-    this.id = -1;
-    this.texcoordX = 0;
-    this.texcoordY = 0;
-    this.prevTexcoordX = 0;
-    this.prevTexcoordY = 0;
-    this.deltaX = 0;
-    this.deltaY = 0;
-    this.down = false;
-    this.moved = false;
-    this.color = [30, 0, 300];
-}
-
-let pointers = [];
+let touches = [];
 let splatStack = [];
-pointers.push(new pointerPrototype());
 
 const { gl, ext } = getWebGLContext(canvas);
 
@@ -118,6 +104,46 @@ if (!ext.supportLinearFiltering) {
     config.BLOOM = false;
     config.SUNRAYS = false;
 }
+
+let realTimeStats = {};
+let sessionId = null;
+let realTimeModel = null;
+let realTimeConfig = null;
+let realTimeActivity = null;
+//let convergenceHost = location.protocol + '//' + location.hostname + ':3000/api/realtime/convergence/default';
+let convergenceHost = 'http://13.56.251.60/api/realtime/convergence/default';
+
+Convergence.connectAnonymously(convergenceHost)
+  .then((domain) => {
+    sessionId = domain.session().sessionId();
+    const modelService = domain.models();
+    // If the collection and/or model don't exist, they will be created for you.
+    modelService.openAutoCreate({
+      collection: "flowstate",
+      id: "flowstate-default",
+      data: { 'config': config },
+      ephemeral: true
+    })
+    .then((model) => {
+      realTimeModel = model;
+      realTimeConfig = model.elementAt('config');
+      // Populate local config with remote values (redundant if it was created)
+      realTimeConfig.forEach((value, key) => { config[key] = value.value(); });
+      realTimeConfig.on(Convergence.RealTimeObject.Events.MODEL_CHANGED, (evt) => {
+        config[evt.relativePath[0]] = realTimeConfig.elementAt(evt.relativePath).value();
+      });
+    })
+    .catch((error) => {
+      console.error("Could not open model: " + error);
+    });
+    domain.activities().join('flowstate-default').then(activity => {
+      realTimeActivity = activity;
+      realTimeActivity.on('state_delta', realTimeActivityChange);
+    });
+  })
+  .catch((error) => {
+    console.error("Could not connect: " + error);
+  });
 
 startGUI();
 
@@ -210,6 +236,18 @@ function supportRenderTextureFormat (gl, internalFormat, format, type) {
 }
 
 function startGUI () {
+    dat.GUI.prototype.addBasic = dat.GUI.prototype.add;
+    dat.GUI.prototype.add = function(obj, prop, ...params) {
+      let controller = this.addBasic(obj, prop, ...params);
+      controller.listen();
+      controller.onChange(function(value) {
+        if (!realTimeConfig) {
+          return;
+        }
+        realTimeConfig.get(prop).value(value);
+      });
+      return controller;
+    }
     var gui = new dat.GUI({ width: 300 });
     gui.add(config, 'DYE_RESOLUTION', { '1024': 1024, '512': 512, '256': 256, '128': 128, '64': 64 }).name('quality').onFinishChange(initFramebuffers);
     gui.add(config, 'SIM_RESOLUTION', { '8': 8, '16': 16, '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
@@ -223,7 +261,7 @@ function startGUI () {
     gui.add(config, 'COLORFUL').name('colorful');
     gui.add(config, 'PAUSED').name('paused').listen();
 
-    gui.add({ fun: () => {
+    gui.addBasic({ fun: () => {
         splatStack.push(parseInt(Math.random() * 20) + 5);
     } }, 'fun').name('Random splats');
 
@@ -698,13 +736,30 @@ const splatShader = compileShader(gl.FRAGMENT_SHADER, `
     uniform float aspectRatio;
     uniform vec3 color;
     uniform vec2 point;
+    uniform vec2 previous;
     uniform float radius;
 
     void main () {
-        vec2 p = vUv - point.xy;
-        p.x *= aspectRatio;
         vec3 base = texture2D(uTarget, vUv).xyz;
-        gl_FragColor = vec4(mix(base, color, exp(-dot(p, p) / radius)), 1.0);
+        float dist;
+
+        vec2 AB = point.xy - previous;
+        vec2 BE = vUv - point;
+        vec2 AE = vUv - previous;
+        AB.x *= aspectRatio;
+        BE.x *= aspectRatio;
+        AE.x *= aspectRatio;
+        if (AE == BE || dot(AB, BE) > 0.0) {
+          dist = dot(BE, BE);
+        } else if (dot(AB, AE) < 0.0) {
+          dist = dot(AE, AE);
+        } else {
+          float mod = sqrt(AB.x * AB.x + AB.y * AB.y);
+          dist = abs(AB.x * AE.y - AE.x * AB.y) / mod;
+          dist = dist * dist;
+        }
+
+        gl_FragColor = vec4(mix(base, color, exp(-dist / radius)), 1.0);
     }
 `);
 
@@ -1156,8 +1211,15 @@ function updateColors (dt) {
     colorUpdateTimer += dt * config.COLOR_UPDATE_SPEED;
     if (colorUpdateTimer >= 1) {
         colorUpdateTimer = wrap(colorUpdateTimer, 0, 1);
-        pointers.forEach(p => {
-            p.color = generateColor();
+        touches.forEach(p => {
+            if (p.local) {
+                p.color = generateColor();
+                if (realTimeActivity) {
+                    realTimeActivity.setState({
+                        ['c' + p.id]: p.color
+                    });
+                }
+            }
         });
     }
 }
@@ -1166,10 +1228,15 @@ function applyInputs () {
     if (splatStack.length > 0)
         multipleSplats(splatStack.pop());
 
-    pointers.forEach(p => {
-        if (p.down || p.moved) {
-            p.moved = false;
-            splatPointer(p);
+    touches.forEach(p => {
+        let curPos = null, prevPos = p.pos;
+        while (p.history.length) {
+            curPos = prevPos;
+            prevPos = p.history.pop();
+            splat(curPos, prevPos, p.color);
+        }
+        if (!curPos) {
+          splat(p.pos, p.pos, p.color);
         }
     });
 }
@@ -1374,12 +1441,6 @@ function blur (target, temp, iterations) {
     }
 }
 
-function splatPointer (pointer) {
-    let dx = pointer.deltaX * config.SPLAT_FORCE;
-    let dy = pointer.deltaY * config.SPLAT_FORCE;
-    splat(pointer.texcoordX, pointer.texcoordY, dx, dy, pointer.color);
-}
-
 function multipleSplats (amount) {
     for (let i = 0; i < amount; i++) {
         const color = generateColor();
@@ -1390,17 +1451,18 @@ function multipleSplats (amount) {
         const y = Math.random();
         const dx = 1000 * (Math.random() - 0.5);
         const dy = 1000 * (Math.random() - 0.5);
-        splat(x, y, dx, dy, color);
+        splat({x: x, y: y}, {x: x, y: y}, color);
     }
 }
 
-function splat (x, y, dx, dy, color) {
+function splat(pos, previous, color) {
     gl.viewport(0, 0, velocity.width, velocity.height);
     splatProgram.bind();
     gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0));
     gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
-    gl.uniform2f(splatProgram.uniforms.point, x, y);
-    gl.uniform3f(splatProgram.uniforms.color, dx, dy, 0.0);
+    gl.uniform2f(splatProgram.uniforms.point, pos.x, pos.y);
+    gl.uniform2f(splatProgram.uniforms.previous, previous.x, previous.y);
+    gl.uniform3f(splatProgram.uniforms.color, (pos.x-previous.x) * config.SPLAT_FORCE, (pos.y-previous.y) * config.SPLAT_FORCE, 0.0);
     gl.uniform1f(splatProgram.uniforms.radius, correctRadius(config.SPLAT_RADIUS / 100.0));
     blit(velocity.write.fbo);
     velocity.swap();
@@ -1419,60 +1481,121 @@ function correctRadius (radius) {
     return radius;
 }
 
+function touchstart(id, x, y) {
+  let touch = {
+    id: id,
+    // Leave unset for non-local touches
+    local: true,
+    pos: { x: scaleByPixelRatio(x) / canvas.width,
+           y: 1.0 - scaleByPixelRatio(y) / canvas.height},
+    color: generateColor()
+  };
+  if (realTimeActivity) {
+    realTimeActivity.setState({
+      ['c' + id]: touch.color,
+      ['p' + id]: touch.pos
+    });
+    realTimeStats['sendinsert'] = (realTimeStats['sendinsert'] || 0) + 1;
+  }
+  // Add history only after sending to remote listeners; they don't need it
+  touch.history = [touch.pos];
+  touches.push(touch);
+}
+
+function touchmove(id, x, y) {
+  let touch = touches.find(p => p.id == id);
+  if (!touch) {
+    return;
+  }
+  x = scaleByPixelRatio(x) / canvas.width;
+  y = 1.0 - scaleByPixelRatio(y) / canvas.height;
+  //touch.history.push(Object.assign({}, touch.pos));
+  touch.history.push({x: touch.pos.x, y: touch.pos.y});
+  touch.pos.x = x;
+  touch.pos.y = y;
+  if (realTimeActivity) {
+    realTimeActivity.setState({
+      ['p' + id]: touch.pos
+    });
+    realTimeStats['sendupdate'] = (realTimeStats['sendupdate'] || 0) + 1;
+  }
+}
+
+function touchend(id) {
+  let idx = touches.findIndex(p => p && p.id == id);
+  touches.splice(idx, 1);
+  if (realTimeActivity) {
+    realTimeActivity.removeState(['c' + id, 'p' + id]);
+    realTimeStats['sendremove'] = (realTimeStats['sendremove'] || 0) + 1;
+  }
+}
+
 canvas.addEventListener('mousedown', e => {
-    let posX = scaleByPixelRatio(e.offsetX);
-    let posY = scaleByPixelRatio(e.offsetY);
-    let pointer = pointers.find(p => p.id == -1);
-    if (pointer == null)
-        pointer = new pointerPrototype();
-    updatePointerDownData(pointer, -1, posX, posY);
+  touchstart('m', e.offsetX, e.offsetY);
 });
 
 canvas.addEventListener('mousemove', e => {
-    let pointer = pointers[0];
-    if (!pointer.down) return;
-    let posX = scaleByPixelRatio(e.offsetX);
-    let posY = scaleByPixelRatio(e.offsetY);
-    updatePointerMoveData(pointer, posX, posY);
+  touchmove('m', e.offsetX, e.offsetY);
 });
 
 window.addEventListener('mouseup', () => {
-    updatePointerUpData(pointers[0]);
+  touchend('m');
 });
 
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
-    const touches = e.targetTouches;
-    while (touches.length >= pointers.length)
-        pointers.push(new pointerPrototype());
-    for (let i = 0; i < touches.length; i++) {
-        let posX = scaleByPixelRatio(touches[i].pageX);
-        let posY = scaleByPixelRatio(touches[i].pageY);
-        updatePointerDownData(pointers[i + 1], touches[i].identifier, posX, posY);
-    }
+    for (const touch of e.changedTouches) {
+      touchstart(touch.identifier, touch.pageX, touch.pageY);
+    };
 });
 
 canvas.addEventListener('touchmove', e => {
     e.preventDefault();
-    const touches = e.targetTouches;
-    for (let i = 0; i < touches.length; i++) {
-        let pointer = pointers[i + 1];
-        if (!pointer.down) continue;
-        let posX = scaleByPixelRatio(touches[i].pageX);
-        let posY = scaleByPixelRatio(touches[i].pageY);
-        updatePointerMoveData(pointer, posX, posY);
-    }
+    for (const touch of e.changedTouches) {
+      touchmove(touch.identifier, touch.pageX, touch.pageY);
+    };
 }, false);
 
 window.addEventListener('touchend', e => {
-    const touches = e.changedTouches;
-    for (let i = 0; i < touches.length; i++)
-    {
-        let pointer = pointers.find(p => p.id == touches[i].identifier);
-        if (pointer == null) continue;
-        updatePointerUpData(pointer);
-    }
+    e.preventDefault();
+    for (const touch of e.changedTouches) {
+      touchend(touch.identifier);
+    };
 });
+
+function realTimeActivityChange(evt) {
+  // XXX: Local is true for different browsers/windows on same machine??
+  if (evt.sessionId == sessionId) {
+    return;
+  }
+  let id = evt.sessionId + evt.oldValues.keys().next().value.substring(1);
+  let idx = touches.findIndex(p => p.id == id);
+  if (evt.removed.length) {
+    realTimeStats['remove'] = (realTimeStats['remove'] || 0) + 1;
+    touches.splice(idx, 1);
+  } else {
+    let touch;
+    if (idx == -1) {
+      realTimeStats['insert'] = (realTimeStats['insert'] || 0) + 1;
+      touch = { id: id, history: [] };
+      touches.push(touch);
+    } else {
+      touch = touches[idx];
+      realTimeStats['set'] = (realTimeStats['set'] || 0) + 1;
+      touch.history.push(touch.pos);
+    }
+    evt.values.forEach((value, key) => {
+      if (key[0] == 'c') {
+        touch.color = value;
+      } else if (key[0] == 'p') {
+        touch.pos = value;
+        if (idx == -1) {
+          touch.history.push(touch.pos);
+        }
+      }
+    });
+  }
+}
 
 window.addEventListener('keydown', e => {
     if (e.code === 'KeyP')
@@ -1480,45 +1603,6 @@ window.addEventListener('keydown', e => {
     if (e.key === ' ')
         splatStack.push(parseInt(Math.random() * 20) + 5);
 });
-
-function updatePointerDownData (pointer, id, posX, posY) {
-    pointer.id = id;
-    pointer.down = true;
-    pointer.moved = false;
-    pointer.texcoordX = posX / canvas.width;
-    pointer.texcoordY = 1.0 - posY / canvas.height;
-    pointer.prevTexcoordX = pointer.texcoordX;
-    pointer.prevTexcoordY = pointer.texcoordY;
-    pointer.deltaX = 0;
-    pointer.deltaY = 0;
-    pointer.color = generateColor();
-}
-
-function updatePointerMoveData (pointer, posX, posY) {
-    pointer.prevTexcoordX = pointer.texcoordX;
-    pointer.prevTexcoordY = pointer.texcoordY;
-    pointer.texcoordX = posX / canvas.width;
-    pointer.texcoordY = 1.0 - posY / canvas.height;
-    pointer.deltaX = correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX);
-    pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY);
-    pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
-}
-
-function updatePointerUpData (pointer) {
-    pointer.down = false;
-}
-
-function correctDeltaX (delta) {
-    let aspectRatio = canvas.width / canvas.height;
-    if (aspectRatio < 1) delta *= aspectRatio;
-    return delta;
-}
-
-function correctDeltaY (delta) {
-    let aspectRatio = canvas.width / canvas.height;
-    if (aspectRatio > 1) delta /= aspectRatio;
-    return delta;
-}
 
 function generateColor () {
     let c = HSVtoRGB(Math.random(), Math.random(), 1.0);
