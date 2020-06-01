@@ -254,7 +254,9 @@ function startGUI () {
         if (!realTimeConfig) {
           return;
         }
-        realTimeConfig.get(prop).value(value);
+        // Convert to number if it's supposed to be one: dat.gui seems to
+        // return the numbers for *_RESOLUTION choosers as strings.
+        realTimeConfig.get(prop).value(isNaN(value) ? value : +value);
       });
       return controller;
     }
