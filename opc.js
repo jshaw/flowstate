@@ -45,40 +45,36 @@ OPC = function(
       yoffset = 0;
       scale = ratio > 1.0 ? height * ratio : height;
     }
-    pixels = unitPixels.map(coord => [
-        Math.round(coord[0] * scale + xoffset),
-        Math.round(coord[1] * scale + yoffset)]);
+    pixels = unitPixels.map(coord => (
+        Math.round(coord[0] * scale + xoffset) +
+        (height-1-Math.round(coord[1] * scale + yoffset)) * width) * 4);
     let ctx = self.overlayCanvas.getContext('2d');
     self.overlayCanvas.width = width;
     self.overlayCanvas.height = height;
     ctx.clearRect(0, 0, self.overlayCanvas.width, self.overlayCanvas.height);
-    for (let i in pixels) {
+    unitPixels.forEach(coord => {
+      const x = Math.round(coord[0] * scale + xoffset);
+      const y = Math.round(coord[1] * scale + yoffset);
       ctx.fillStyle = 'white';
-      ctx.fillRect(pixels[i][0], pixels[i][1], 1, 1);
+      ctx.fillRect(x, y, 1, 1);
       ctx.fillStyle = 'black';
-      ctx.fillRect(pixels[i][0] + 1, pixels[i][1], 1, 1);
-    }
+      ctx.fillRect(x+1, y, 1, 1);
+    });
   }
 
   this.send = function() {
     if (!self.ws || self.ws.readyState != 1) {
       return;
     }
+    var width = mainCanvas.width;
+    var height = mainCanvas.height;
     var packet = [];
-    var data = new Uint8Array(mainCanvas.width * mainCanvas.height * 4);
+    var data = new Uint8Array(width * height * 4);
     gl.readPixels(
-      0, 0, mainCanvas.width, mainCanvas.height, gl.RGBA, gl.UNSIGNED_BYTE, data);
-    for (let i in pixels) {
-      let idx = (
-          pixels[i][0] +
-          (mainCanvas.height-1-pixels[i][1]) * mainCanvas.width) * 4;
+      0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    pixels.forEach(idx => {
       packet.push(data[idx], data[idx+1], data[idx+2]);
-      /*let ctx = self.overlayCanvas.getContext('2d');
-      ctx.fillStyle = `rgb(${data[idx]}, ${data[idx+1]}, ${data[idx+2]})`;
-      ctx.beginPath();
-      ctx.arc(pixels[i][0], pixels[i][1], 5, 0, Math.PI*2);
-      ctx.fill();*/
-    }
+    });
     if (self.using_websockify) {
       // gl_server expects the packet length, as is the OPC standard
       packet.unshift(0, 0, (packet.length >> 8) & 0xFF, packet.length & 0xFF);
