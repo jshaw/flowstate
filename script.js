@@ -89,13 +89,6 @@ statusText.onclick = function(evt) {
   opc.toggleConnection();
 };
 
-let stats = new Stats();
-stats.setMode(0);
-stats.domElement.style.position = "absolute";
-stats.domElement.style.left= "0px";
-stats.domElement.style.bottom = "0px";
-document.body.appendChild(stats.domElement);
-
 let touches = [];
 let splatStack = [];
 
@@ -111,7 +104,6 @@ if (!ext.supportLinearFiltering) {
     config.SUNRAYS = false;
 }
 
-let realTimeStats = {};
 let sessionId = null;
 let realTimeModel = null;
 let realTimeConfig = null;
@@ -157,6 +149,12 @@ Convergence.connectAnonymously(convergenceHost)
 
 let gui;
 startGUI();
+
+let stats = new Stats();
+stats.setMode(0);
+gui.domElement.querySelector('ul').appendChild(document.createElement('li'))
+  .appendChild(stats.domElement);
+
 
 function getWebGLContext (canvas) {
     const params = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false };
@@ -259,7 +257,7 @@ function startGUI () {
       });
       return controller;
     }
-    gui = new dat.GUI({ width: 300 });
+    gui = new dat.GUI({ width: 300, closeOnTop: true });
     gui.add(config, 'DYE_RESOLUTION', { '1024': 1024, '512': 512, '256': 256, '128': 128, '64': 64 }).name('quality').onFinishChange(initFramebuffers);
     gui.add(config, 'SIM_RESOLUTION', { '8': 8, '16': 16, '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
     gui.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion');
@@ -293,6 +291,10 @@ function startGUI () {
     if (isMobile()) {
         gui.close();
     } 
+
+    // XXX: Drag handler preventDefault()s the mouse click on mobile,
+    // so open/close don't work?!
+    gui.__closeButton.ontouchstart = gui.__closeButton.click;
 }
 
 function isMobile () {
@@ -1537,7 +1539,6 @@ function touchstart(id, x, y) {
       ['c' + id]: touch.color,
       ['p' + id]: touch.pos
     });
-    realTimeStats['sendinsert'] = (realTimeStats['sendinsert'] || 0) + 1;
   }
   // Add history only after sending to remote listeners; they don't need it
   touch.history = [touch.pos];
@@ -1559,7 +1560,6 @@ function touchmove(id, x, y) {
     realTimeActivity.setState({
       ['p' + id]: touch.pos
     });
-    realTimeStats['sendupdate'] = (realTimeStats['sendupdate'] || 0) + 1;
   }
 }
 
@@ -1568,7 +1568,6 @@ function touchend(id) {
   touches.splice(idx, 1);
   if (realTimeActivity) {
     realTimeActivity.removeState(['c' + id, 'p' + id]);
-    realTimeStats['sendremove'] = (realTimeStats['sendremove'] || 0) + 1;
   }
 }
 
@@ -1613,17 +1612,14 @@ function realTimeActivityChange(evt) {
   let id = evt.sessionId + evt.oldValues.keys().next().value.substring(1);
   let idx = touches.findIndex(p => p.id == id);
   if (evt.removed.length) {
-    realTimeStats['remove'] = (realTimeStats['remove'] || 0) + 1;
     touches.splice(idx, 1);
   } else {
     let touch;
     if (idx == -1) {
-      realTimeStats['insert'] = (realTimeStats['insert'] || 0) + 1;
       touch = { id: id, history: [] };
       touches.push(touch);
     } else {
       touch = touches[idx];
-      realTimeStats['set'] = (realTimeStats['set'] || 0) + 1;
       touch.history.push(touch.pos);
     }
     evt.values.forEach((value, key) => {
