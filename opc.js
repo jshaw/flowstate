@@ -6,7 +6,8 @@ var WEBSOCKET_STATES = {
   3: 'closed'
 }
 
-OPC = function (host, layoutFile, mainCanvas, overlayCanvas, stateHandler) {
+OPC = function(
+    host, layoutFile, mainCanvas, overlayCanvas, stateHandler, layoutHandler) {
   var self = this;
 
   // https://codepen.io/KryptoniteDove/post/load-json-file-locally-using-pure-javascript
@@ -60,6 +61,9 @@ OPC = function (host, layoutFile, mainCanvas, overlayCanvas, stateHandler) {
   }
 
   this.send = function() {
+    if (!self.ws || self.ws.readyState != 1) {
+      return;
+    }
     var packet = [];
     var data = new Uint8Array(mainCanvas.width * mainCanvas.height * 4);
     gl.readPixels(
@@ -148,6 +152,7 @@ OPC = function (host, layoutFile, mainCanvas, overlayCanvas, stateHandler) {
   this.mainCanvas = mainCanvas;
   this.overlayCanvas = overlayCanvas;
   this.stateHandler = stateHandler;
+  this.layoutHandler = layoutHandler;
   this.connect();
 
   // This will be an array of (x,y) coordinates in the range (0, 1)
@@ -187,6 +192,7 @@ OPC = function (host, layoutFile, mainCanvas, overlayCanvas, stateHandler) {
         (v           - mins[0] + padding/2.0) * scale,
         (byDim[1][i] - mins[1] + padding/2.0) * scale
     ]);
+    layoutHandler(ratio);
     self.resize();
   });
 }

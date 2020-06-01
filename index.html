@@ -35,7 +35,7 @@
 
             html, body {
                 overflow: hidden;
-                background-color: #000;
+                background-color: #222;
             }
 
             body {
@@ -50,13 +50,13 @@
                 height: 100%;
                 left:0px;
                 top:0px;
+                position:absolute;
             }
             #mainCanvas {
-                z-index: 1;
+                z-index: -2;
             }
             #overlayCanvas {
-                position:absolute;
-                z-index: 2;
+                z-index: -1;
                 pointer-events: none;
                 touch-action: none;
             }

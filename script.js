@@ -29,38 +29,8 @@ SOFTWARE.
 // Simulation code
 
 const canvas = document.getElementById('mainCanvas');
+const overlayCanvas = document.getElementById('overlayCanvas');
 const statusText = document.getElementById('statusText');
-
-let opc = new OPC(
-  (location.protocol == 'https:' ? 'wss' : 'ws') + '://' +
-    (window.location.hostname || 'localhost') + ':7890',
-  'layout.json',
-  canvas,
-  document.getElementById('overlayCanvas'),
-  function(state) {
-    statusText.textContent = state;
-  });
-
-document.onkeydown = function(evt) {
-  evt = evt || window.event;
-  if (evt.keyCode == 27) {
-    opc.toggleConnection();
-  }
-};
-statusText.onclick = function(evt) {
-  opc.toggleConnection();
-};
-
-let stats = new Stats();
-stats.setMode(0);
-stats.domElement.style.position = "absolute";
-stats.domElement.style.left= "0px";
-stats.domElement.style.bottom = "0px";
-document.body.appendChild(stats.domElement);
-
-resizeCanvas();
-
-
 
 let config = {
     SIM_RESOLUTION: 32,
@@ -88,7 +58,43 @@ let config = {
     SUNRAYS: false,
     SUNRAYS_RESOLUTION: 196,
     SUNRAYS_WEIGHT: 1.0,
+    ASPECT_RATIO: window.innerWidth / window.innerHeight,
 }
+
+
+let opc = new OPC(
+  (location.protocol == 'https:' ? 'wss' : 'ws') + '://' +
+    (window.location.hostname || 'localhost') + ':7890',
+  'layout.json',
+  canvas,
+  overlayCanvas,
+  function(state) {
+    statusText.textContent = state;
+  },
+  function(ratio) {
+    config.ASPECT_RATIO = ratio;
+    if (realTimeConfig) {
+      realTimeConfig.get('ASPECT_RATIO').value(ratio);
+    }
+    resizeCanvas();
+  });
+
+document.onkeydown = function(evt) {
+  evt = evt || window.event;
+  if (evt.keyCode == 27) {
+    opc.toggleConnection();
+  }
+};
+statusText.onclick = function(evt) {
+  opc.toggleConnection();
+};
+
+let stats = new Stats();
+stats.setMode(0);
+stats.domElement.style.position = "absolute";
+stats.domElement.style.left= "0px";
+stats.domElement.style.bottom = "0px";
+document.body.appendChild(stats.domElement);
 
 let touches = [];
 let splatStack = [];
@@ -130,7 +136,11 @@ Convergence.connectAnonymously(convergenceHost)
       // Populate local config with remote values (redundant if it was created)
       realTimeConfig.forEach((value, key) => { config[key] = value.value(); });
       realTimeConfig.on(Convergence.RealTimeObject.Events.MODEL_CHANGED, (evt) => {
-        config[evt.relativePath[0]] = realTimeConfig.elementAt(evt.relativePath).value();
+        var key = evt.relativePath[0];
+        config[key] = realTimeConfig.elementAt(evt.relativePath).value();
+        if (key == 'ASPECT_RATIO') {
+          resizeCanvas();
+        }
       });
     })
     .catch((error) => {
@@ -145,6 +155,7 @@ Convergence.connectAnonymously(convergenceHost)
     console.error("Could not connect: " + error);
   });
 
+let gui;
 startGUI();
 
 function getWebGLContext (canvas) {
@@ -248,7 +259,7 @@ function startGUI () {
       });
       return controller;
     }
-    var gui = new dat.GUI({ width: 300 });
+    gui = new dat.GUI({ width: 300 });
     gui.add(config, 'DYE_RESOLUTION', { '1024': 1024, '512': 512, '256': 256, '128': 128, '64': 64 }).name('quality').onFinishChange(initFramebuffers);
     gui.add(config, 'SIM_RESOLUTION', { '8': 8, '16': 16, '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
     gui.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion');
@@ -281,7 +292,7 @@ function startGUI () {
 
     if (isMobile()) {
         gui.close();
-    }
+    } 
 }
 
 function isMobile () {
@@ -1161,7 +1172,9 @@ function updateKeywords () {
 }
 
 updateKeywords();
-initFramebuffers();
+
+resizeCanvas(true);
+window.onresize = resizeCanvas;
 
 let lastUpdateTime = Date.now();
 let colorUpdateTimer = 0.0;
@@ -1171,8 +1184,6 @@ function update () {
     stats.begin();
 
     const dt = calcDeltaTime();
-    if (resizeCanvas())
-        initFramebuffers();
     updateColors(dt);
     applyInputs();
     if (!config.PAUSED)
@@ -1193,16 +1204,47 @@ function calcDeltaTime () {
     return dt;
 }
 
-function resizeCanvas () {
-    let width = scaleByPixelRatio(canvas.clientWidth);
-    let height = scaleByPixelRatio(canvas.clientHeight);
-    if (canvas.width != width || canvas.height != height) {
-        canvas.width = width;
-        canvas.height = height;
-        opc.resize();
-        return true;
-    }
-    return false;
+function resizeCanvas(forceInit) {
+  let width = window.innerWidth;
+  let height = window.innerHeight;
+  if (width / height > config.ASPECT_RATIO) {
+    width = Math.round(height * config.ASPECT_RATIO);
+  } else {
+    height = Math.round(width / config.ASPECT_RATIO);
+  }
+
+  let x;
+  let guiLoc = gui.domElement.getBoundingClientRect();
+  if (width > guiLoc.x || window.innerWidth / 2 + width / 2 <= guiLoc.x) {
+    // GUI needs to overlap canvas or canvas will fit centered without overlap
+    x = Math.round(window.innerWidth / 2 - width / 2);
+  } else {
+    // Canvas will fit off-center without overlapping GUI
+    x = Math.round(guiLoc.x / 2 - width / 2);
+  }
+  x += 'px';
+  canvas.style.left = x;
+  overlayCanvas.style.left = x;
+
+  // Make sure GUI is on top
+  gui.domElement.style.zIndex = 100;
+
+  width += 'px';
+  height += 'px';
+  canvas.style.width = width;
+  canvas.style.height = height;
+  overlayCanvas.style.width = width;
+  overlayCanvas.style.height = height;
+
+  // Now make sure canvas logical size is correct
+  width = scaleByPixelRatio(canvas.clientWidth);
+  height = scaleByPixelRatio(canvas.clientHeight);
+  if (forceInit || canvas.width != width || canvas.height != height) {
+      canvas.width = width;
+      canvas.height = height;
+      opc.resize();
+      initFramebuffers();
+  }
 }
 
 function updateColors (dt) {
