@@ -148,6 +148,7 @@ Convergence.connectAnonymously(convergenceHost)
   });
 
 let gui;
+let pauseController;
 startGUI();
 
 let stats = new Stats();
@@ -268,7 +269,7 @@ function startGUI () {
     gui.add(config, 'SPLAT_FORCE', 0, 12000).name('splat velocity');
     gui.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords);
     gui.add(config, 'COLORFUL').name('colorful');
-    gui.add(config, 'PAUSED').name('paused').listen();
+    pauseController = gui.add(config, 'PAUSED').name('paused');
 
     gui.addBasic({ fun: () => {
         splatStack.push(parseInt(Math.random() * 20) + 5);
@@ -1269,6 +1270,9 @@ function applyInputs () {
         multipleSplats(splatStack.pop());
 
     touches.forEach(p => {
+        if (!p.pos || !p.color) {
+          return;
+        }
         let curPos = null, prevPos = p.pos;
         while (p.history.length) {
             curPos = prevPos;
@@ -1634,7 +1638,8 @@ function realTimeActivityChange(evt) {
 
 window.addEventListener('keydown', e => {
     if (e.code === 'KeyP')
-        config.PAUSED = !config.PAUSED;
+        // Change the controller setting so realTimeConfig is updated properly
+        pauseController.setValue(!pauseController.getValue());
     if (e.key === ' ')
         splatStack.push(parseInt(Math.random() * 20) + 5);
 });
