@@ -291,10 +291,6 @@ function startGUI () {
     if (isMobile()) {
         gui.close();
     } 
-
-    // XXX: Drag handler preventDefault()s the mouse click on mobile,
-    // so open/close don't work?!
-    gui.__closeButton.ontouchstart = gui.__closeButton.click;
 }
 
 function isMobile () {
@@ -1598,7 +1594,8 @@ canvas.addEventListener('touchmove', e => {
 }, false);
 
 window.addEventListener('touchend', e => {
-    e.preventDefault();
+    // Don't preventDefault() here; we need touchend events to bubble up
+    // to our GUI to make mobile clicks register properly
     for (const touch of e.changedTouches) {
       touchend(touch.identifier);
     };
