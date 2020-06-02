@@ -66,6 +66,7 @@
                 z-index: -1;
                 pointer-events: none;
                 touch-action: none;
+                display: none;
             }
             #statusText {
                 color: #FFFFFF;
@@ -137,7 +138,7 @@
         </style>
     </head>
     <body>
-        <span id="statusText">Hello</span>
+        <span id="statusText"></span>
         <canvas id="overlayCanvas"></canvas>
         <canvas id="mainCanvas"></canvas>
         <script src="./rxjs.umd.min.js"></script>

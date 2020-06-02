@@ -63,13 +63,19 @@ let config = {
 
 
 let opc = new OPC(
-  (location.protocol == 'https:' ? 'wss' : 'ws') + '://' +
-    (window.location.hostname || 'localhost') + ':7890',
+  // For now, only clients on the local network with brickolage.local connect
+  'ws://brickolage.local:7890',
   'layout.json',
   canvas,
   overlayCanvas,
   function(state) {
-    statusText.textContent = state;
+    // If we're connected or if statusText isn't empty (meaning we've
+    // connected before), show status.
+    if (state == WEBSOCKET_STATES[1] || statusText.textContent) {
+      // Websocket is open; show LED grid
+      overlayCanvas.style.display = 'block';
+      statusText.textContent = state;
+    }
   },
   function(ratio) {
     config.ASPECT_RATIO = ratio;
