@@ -24,9 +24,15 @@ SOFTWARE.
 
 'use strict';
 
-
-
-// Simulation code
+let dye;
+let velocity;
+let divergence;
+let curl;
+let pressure;
+let bloom;
+let bloomFramebuffers = [];
+let sunrays;
+let sunraysTemp;
 
 const canvas = document.getElementById('mainCanvas');
 const overlayCanvas = document.getElementById('overlayCanvas');
@@ -968,16 +974,6 @@ const blit = (() => {
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
 })();
-
-let dye;
-let velocity;
-let divergence;
-let curl;
-let pressure;
-let bloom;
-let bloomFramebuffers = [];
-let sunrays;
-let sunraysTemp;
 
 let ditheringTexture = createTextureAsync('LDR_LLL1_0.png');
 
