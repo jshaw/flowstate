@@ -123,6 +123,7 @@ let realTimeConfig = null;
 let realTimeActivity = null;
 //let convergenceHost = location.protocol + '//' + location.hostname + ':3000/api/realtime/convergence/default';
 let convergenceHost = 'http://13.56.251.60/api/realtime/convergence/default';
+let room = (new URL(document.location)).searchParams.get('r');
 
 Convergence.connectAnonymously(convergenceHost)
   .then((domain) => {
@@ -131,7 +132,7 @@ Convergence.connectAnonymously(convergenceHost)
     // If the collection and/or model don't exist, they will be created for you.
     modelService.openAutoCreate({
       collection: "flowstate",
-      id: "flowstate-default",
+      id: room || "flowstate-default",
       data: { 'config': config },
       ephemeral: true
     })
@@ -155,7 +156,7 @@ Convergence.connectAnonymously(convergenceHost)
     .catch((error) => {
       console.error("Could not open model: " + error);
     });
-    domain.activities().join('flowstate-default').then(activity => {
+    domain.activities().join(room || 'flowstate-default').then(activity => {
       realTimeActivity = activity;
       realTimeActivity.on('state_delta', realTimeActivityChange);
     });
@@ -262,6 +263,20 @@ function supportRenderTextureFormat (gl, internalFormat, format, type) {
     return status == gl.FRAMEBUFFER_COMPLETE;
 }
 
+function getARoom() {
+  let name = window.prompt(
+    "Give your room a name using letters, numbers, -_.!~*'()\nWe'll send your there. Copy the URL and send to your friends.");
+  let url = new URL(document.location);
+  url.searchParams.set('r', encodeURIComponent(name));
+  window.location.href = url.toString();
+}
+
+function leaveRoom() {
+  let url = new URL(document.location);
+  url.searchParams.delete('r');
+  window.location.href = url.toString();
+}
+
 function startGUI () {
     dat.GUI.prototype.addBasic = dat.GUI.prototype.add;
     dat.GUI.prototype.add = function(obj, prop, ...params) {
@@ -280,6 +295,12 @@ function startGUI () {
       return controller;
     }
     gui = new dat.GUI({ width: 300, closeOnTop: true });
+    if (room) {
+      gui.addBasic({room: leaveRoom}, 'room').name(
+        'Leave Room ' + room);
+    } else {
+      gui.addBasic({room: getARoom}, 'room').name('Get A Room');
+    }
     gui.add(config, 'DYE_RESOLUTION', { '1024': 1024, '512': 512, '256': 256, '128': 128, '64': 64 }).name('quality').onFinishChange(initFramebuffers);
     gui.add(config, 'SIM_RESOLUTION', { '8': 8, '16': 16, '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
     gui.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion');
