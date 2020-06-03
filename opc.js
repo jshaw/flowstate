@@ -25,11 +25,11 @@ OPC = function(
   }
 
   this.resize = function() {
-    if (!unitPixels.length || !mainCanvas.width || !mainCanvas.height) {
+    width = mainCanvas.width;
+    height = mainCanvas.height;
+    if (!unitPixels.length || !width || !height) {
       return;
     }
-    let width = mainCanvas.width;
-    let height = mainCanvas.height;
     let canvasRatio = width/height;
     let pixelWidth, pixelHeight, xoffset, yoffset, scale;
     if (canvasRatio < ratio) {
@@ -48,6 +48,16 @@ OPC = function(
     pixels = unitPixels.map(coord => (
         Math.round(coord[0] * scale + xoffset) +
         (height-1-Math.round(coord[1] * scale + yoffset)) * width) * 4);
+
+    // These vars will be used in send(); only initialize them once
+    len = pixels.length;
+    packet = new Uint8Array(len * 3 + 4);
+    data = new Uint8Array(width * height * 4);
+    packet[0] = 0;
+    packet[1] = 0;
+    packet[2] = self.using_websockify ? (len >> 8) & 0xFF : 0;
+    packet[3] = self.using_websockify ? len & 0xFF : 0;
+
     let ctx = self.overlayCanvas.getContext('2d');
     self.overlayCanvas.width = width;
     self.overlayCanvas.height = height;
@@ -66,31 +76,14 @@ OPC = function(
     if (!self.ws || self.ws.readyState != 1) {
       return;
     }
-    var width = mainCanvas.width;
-    var height = mainCanvas.height;
-    var packet = [];
-    var data = new Uint8Array(width * height * 4);
     gl.readPixels(
       0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
-    pixels.forEach(idx => {
-      packet.push(data[idx], data[idx+1], data[idx+2]);
+    pixels.forEach((idx, i) => {
+      packet[4 + i*3] = data[idx];
+      packet[5 + i*3] = data[idx+1];
+      packet[6 + i*3] = data[idx+2];
     });
-    if (self.using_websockify) {
-      // gl_server expects the packet length, as is the OPC standard
-      packet.unshift(0, 0, (packet.length >> 8) & 0xFF, packet.length & 0xFF);
-    } else {
-      // fcserver expects 0s because the TCP packet already defines length
-      packet.unshift(0, 0, 0, 0);
-    }
-    _sendPacket(packet);
-  }
-
-
-  var _sendPacket = function(pkt) {
-    if (self.ws.readyState == 1) {
-      var packet = new Uint8Array(pkt);
-      self.ws.send(packet.buffer);
-    }
+    self.ws.send(packet.buffer);
   }
 
   var _baseConnect = function() {
@@ -155,6 +148,8 @@ OPC = function(
   var unitPixels = [];
   // This will be based on canvas dimensions, which can change
   var pixels = [];
+  // These are set in resize() so they don't have to be changed on every send()
+  var width, height, len, packet, data;
   // Width/height aspect ratio
   var ratio = null;
   const dims = [0, 1, 2];
