@@ -267,7 +267,9 @@ function startGUI () {
         }
         // Convert to number if it's supposed to be one: dat.gui seems to
         // return the numbers for *_RESOLUTION choosers as strings.
-        realTimeConfig.get(prop).value(isNaN(value) ? value : +value);
+        // But isNaN(boolean) is true and we don't want to convert those.
+        realTimeConfig.get(prop).value(
+            isNaN(value) || typeof value === 'boolean' ? value : +value);
       });
       return controller;
     }
