@@ -73,7 +73,7 @@ OPC = function(
   }
 
   this.send = function() {
-    if (!self.ws || self.ws.readyState != 1) {
+    if (!self.ws || self.ws.readyState != 1 || !len) {
       return;
     }
     gl.readPixels(
@@ -149,7 +149,7 @@ OPC = function(
   // This will be based on canvas dimensions, which can change
   var pixels = [];
   // These are set in resize() so they don't have to be changed on every send()
-  var width, height, len, packet, data;
+  var width, height, len = 0, packet, data;
   // Width/height aspect ratio
   var ratio = null;
   const dims = [0, 1, 2];
