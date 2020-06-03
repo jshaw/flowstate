@@ -79,6 +79,7 @@ let opc = new OPC(
   },
   function(ratio) {
     config.ASPECT_RATIO = ratio;
+    config.ASPECT_RATIO_FROM_OPC = ratio;
     if (realTimeConfig) {
       realTimeConfig.get('ASPECT_RATIO').value(ratio);
     }
@@ -133,6 +134,10 @@ Convergence.connectAnonymously(convergenceHost)
       realTimeConfig = model.elementAt('config');
       // Populate local config with remote values (redundant if it was created)
       realTimeConfig.forEach((value, key) => { config[key] = value.value(); });
+      // But if we have an aspect ratio from OPC, set that on config
+      if (config.ASPECT_RATIO_FROM_OPC) {
+        realTimeConfig.get('ASPECT_RATIO').value(config.ASPECT_RATIO_FROM_OPC);
+      }
       realTimeConfig.on(Convergence.RealTimeObject.Events.MODEL_CHANGED, (evt) => {
         var key = evt.relativePath[0];
         config[key] = realTimeConfig.elementAt(evt.relativePath).value();
