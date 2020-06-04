@@ -81,6 +81,8 @@ let opc = new OPC(
     if (state == WEBSOCKET_STATES[1] || statusText.textContent) {
       // Websocket is open; show LED grid
       overlayCanvas.style.display = 'block';
+      // And show FPS
+      stats.domElement.hidden = false;
       statusText.textContent = state;
     }
   },
@@ -175,6 +177,7 @@ stats.domElement.style.position = "absolute";
 stats.domElement.style.left= "0px";
 stats.domElement.style.bottom = "0px";
 document.body.appendChild(stats.domElement);
+stats.domElement.hidden = true;
 
 
 function getWebGLContext (canvas) {
