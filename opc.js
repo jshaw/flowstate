@@ -7,7 +7,7 @@ var WEBSOCKET_STATES = {
 }
 
 OPC = function(
-    host, layoutFile, mainCanvas, overlayCanvas, stateHandler, layoutHandler) {
+    host, layoutFile, mainCanvas, overlayCanvas, stateHandler) {
   var self = this;
 
   // https://codepen.io/KryptoniteDove/post/load-json-file-locally-using-pure-javascript
@@ -32,18 +32,18 @@ OPC = function(
     }
     let canvasRatio = width/height;
     let pixelWidth, pixelHeight, xoffset, yoffset, scale;
-    if (canvasRatio < ratio) {
+    if (canvasRatio < self.aspectRatio) {
       pixelWidth = width;
-      pixelHeight = width / ratio;
+      pixelHeight = width / self.aspectRatio;
       xoffset = 0;
       yoffset = (height - pixelHeight) / 2.0;
-      scale = ratio < 1.0 ? width / ratio : width;
+      scale = self.aspectRatio < 1.0 ? width / self.aspectRatio : width;
     } else {
-      pixelWidth = height * ratio;
+      pixelWidth = height * self.aspectRatio;
       pixelHeight = height;
       xoffset = (width - pixelWidth) / 2.0;
       yoffset = 0;
-      scale = ratio > 1.0 ? height * ratio : height;
+      scale = self.aspectRatio > 1.0 ? height * self.aspectRatio : height;
     }
     pixels = unitPixels.map(coord => (
         Math.round(coord[0] * scale + xoffset) +
@@ -104,7 +104,7 @@ OPC = function(
       _baseConnect();
     }
     self.connecting_without_websockify = false;
-    self.stateHandler(self.getState());
+    self.stateHandler(self.getState(), self.aspectRatio);
   }
 
   this.connect = function() {
@@ -141,8 +141,6 @@ OPC = function(
   this.mainCanvas = mainCanvas;
   this.overlayCanvas = overlayCanvas;
   this.stateHandler = stateHandler;
-  this.layoutHandler = layoutHandler;
-  this.connect();
 
   // This will be an array of (x,y) coordinates in the range (0, 1)
   var unitPixels = [];
@@ -150,8 +148,6 @@ OPC = function(
   var pixels = [];
   // These are set in resize() so they don't have to be changed on every send()
   var width, height, len = 0, packet, data;
-  // Width/height aspect ratio
-  var ratio = null;
   const dims = [0, 1, 2];
   loadJSON(self.layoutFile, function(response) {
     // Load layout file JSON
@@ -172,8 +168,8 @@ OPC = function(
     var xCount = Math.sqrt(layout.length * ranges[0] / ranges[1]);
     // Use that to determine padding
     var padding = ranges[0] / xCount;
-    // Now we know our final width-to-height ratio including padding
-    ratio = (ranges[0] + padding) / (ranges[1] + padding);
+    // Now we know our final width-to-height aspect ratio including padding
+    self.aspectRatio = (ranges[0] + padding) / (ranges[1] + padding);
     // Now find large dimension
     var maxDim = ranges.indexOf(Math.max(...ranges));
     // Plan to scale everything to range (0, 1) while leaving padding
@@ -183,7 +179,7 @@ OPC = function(
         (v           - mins[0] + padding/2.0) * scale,
         (byDim[1][i] - mins[1] + padding/2.0) * scale
     ]);
-    layoutHandler(ratio);
     self.resize();
+    self.connect();
   });
 }

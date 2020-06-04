@@ -75,24 +75,21 @@ let opc = new OPC(
   'layout.json',
   canvas,
   overlayCanvas,
-  function(state) {
-    // If we're connected or if statusText isn't empty (meaning we've
-    // connected before), show status.
+  function(state, aspectRatio) {
+    // If we're connected or if statusText isn't empty (meaning we've connected
+    // before), show status/grid/FPS and set aspect ratio from layout file.
     if (state == WEBSOCKET_STATES[1] || statusText.textContent) {
-      // Websocket is open; show LED grid
-      overlayCanvas.style.display = 'block';
-      // And show FPS
-      stats.domElement.hidden = false;
       statusText.textContent = state;
+      overlayCanvas.style.display = 'block';
+      stats.domElement.hidden = false;
+
+      config.ASPECT_RATIO = aspectRatio;
+      config.ASPECT_RATIO_FROM_OPC = aspectRatio;
+      if (realTimeConfig) {
+        realTimeConfig.get('ASPECT_RATIO').value(aspectRatio);
+      }
+      resizeCanvas();
     }
-  },
-  function(ratio) {
-    config.ASPECT_RATIO = ratio;
-    config.ASPECT_RATIO_FROM_OPC = ratio;
-    if (realTimeConfig) {
-      realTimeConfig.get('ASPECT_RATIO').value(ratio);
-    }
-    resizeCanvas();
   });
 
 document.onkeydown = function(evt) {
@@ -143,6 +140,8 @@ Convergence.connectAnonymously(convergenceHost)
       realTimeConfig = model.elementAt('config');
       // Populate local config with remote values (redundant if it was created)
       realTimeConfig.forEach((value, key) => { config[key] = value.value(); });
+      // And resize to pick up changes
+      resizeCanvas();
       // But if we have an aspect ratio from OPC, set that on config
       if (config.ASPECT_RATIO_FROM_OPC) {
         realTimeConfig.get('ASPECT_RATIO').value(config.ASPECT_RATIO_FROM_OPC);
