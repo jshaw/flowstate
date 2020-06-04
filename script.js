@@ -316,7 +316,7 @@ function startGUI () {
     });
     rainbow.__onChange(config.RAINBOW);
     myFolder.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('splat radius');
-    myFolder.add(config, 'SPLAT_FORCE', 0, 12000).name('splat velocity');
+    myFolder.add(config, 'SPLAT_FORCE', 0, 12000).name('splat force');
 
     let groupFolder = gui.addFolder('Shared Settings');
     groupFolder.open();
@@ -1308,17 +1308,20 @@ function updateColors (dt) {
 
 function applyInputs () {
     touches.forEach(p => {
-        if (!p.pos || !p.color) {
+        // "complete" boolean shortcuts all these other tests to save time?
+        if (!p.complete && (!p.pos || !p.color || !p.radius || !p.force)) {
           return;
         }
+        // If we got this far, it's complete, so set the flag.
+        p.complete = true;
         let curPos = null, prevPos = p.pos;
         while (p.history.length) {
             curPos = prevPos;
             prevPos = p.history.pop();
-            splat(curPos, prevPos, p.color);
+            splat(curPos, prevPos, p);
         }
         if (!curPos) {
-          splat(p.pos, p.pos, p.color);
+          splat(p.pos, p.pos, p);
         }
     });
 }
@@ -1523,21 +1526,21 @@ function blur (target, temp, iterations) {
     }
 }
 
-function splat(pos, previous, color) {
+function splat(pos, previous, touch) {
     gl.viewport(0, 0, velocity.width, velocity.height);
     splatProgram.bind();
     gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0));
     gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
     gl.uniform2f(splatProgram.uniforms.point, pos.x, pos.y);
     gl.uniform2f(splatProgram.uniforms.previous, previous.x, previous.y);
-    gl.uniform3f(splatProgram.uniforms.color, (pos.x-previous.x) * config.SPLAT_FORCE, (pos.y-previous.y) * config.SPLAT_FORCE, 0.0);
-    gl.uniform1f(splatProgram.uniforms.radius, correctRadius(config.SPLAT_RADIUS / 100.0));
+    gl.uniform3f(splatProgram.uniforms.color, (pos.x-previous.x) * touch.force, (pos.y-previous.y) * touch.force, 0.0);
+    gl.uniform1f(splatProgram.uniforms.radius, correctRadius(touch.radius / 100.0));
     blit(velocity.write.fbo);
     velocity.swap();
 
     gl.viewport(0, 0, dye.width, dye.height);
     gl.uniform1i(splatProgram.uniforms.uTarget, dye.read.attach(0));
-    gl.uniform3f(splatProgram.uniforms.color, color.r, color.g, color.b);
+    gl.uniform3f(splatProgram.uniforms.color, touch.color.r, touch.color.g, touch.color.b);
     blit(dye.write.fbo);
     dye.swap();
 }
@@ -1554,14 +1557,21 @@ function touchstart(id, x, y) {
     id: id,
     // Leave unset for non-local touches
     local: true,
+    // Non-local touches come in pieces, so we don't know if they're complete,
+    // but we know this touch has all the needed properties.
+    complete: true,
     pos: { x: scaleByPixelRatio(x) / canvas.width,
            y: 1.0 - scaleByPixelRatio(y) / canvas.height},
-    color: generateColor()
+    color: generateColor(),
+    radius: config.SPLAT_RADIUS,
+    force: config.SPLAT_FORCE
   };
   if (realTimeActivity) {
     realTimeActivity.setState({
+      ['p' + id]: touch.pos,
       ['c' + id]: touch.color,
-      ['p' + id]: touch.pos
+      ['r' + id]: touch.radius,
+      ['f' + id]: touch.force
     });
   }
   // Add history only after sending to remote listeners; they don't need it
@@ -1576,7 +1586,6 @@ function touchmove(id, x, y) {
   }
   x = scaleByPixelRatio(x) / canvas.width;
   y = 1.0 - scaleByPixelRatio(y) / canvas.height;
-  //touch.history.push(Object.assign({}, touch.pos));
   touch.history.push({x: touch.pos.x, y: touch.pos.y});
   touch.pos.x = x;
   touch.pos.y = y;
@@ -1591,7 +1600,7 @@ function touchend(id) {
   let idx = touches.findIndex(p => p && p.id == id);
   touches.splice(idx, 1);
   if (realTimeActivity) {
-    realTimeActivity.removeState(['c' + id, 'p' + id]);
+    realTimeActivity.removeState(['c' + id, 'p' + id, 'f' + id, 'r' + id]);
   }
 }
 
@@ -1648,13 +1657,22 @@ function realTimeActivityChange(evt) {
       touch.history.push(touch.pos);
     }
     evt.values.forEach((value, key) => {
-      if (key[0] == 'c') {
-        touch.color = value;
-      } else if (key[0] == 'p') {
-        touch.pos = value;
-        if (idx == -1) {
-          touch.history.push(touch.pos);
-        }
+      switch(key[0]) {
+        case 'c':
+          touch.color = value;
+          break;
+        case 'p':
+          touch.pos = value;
+          if (idx == -1) {
+            touch.history.push(touch.pos);
+          }
+          break;
+        case 'r':
+          touch.radius = value;
+          break;
+        case 'f':
+          touch.force = value;
+          break;
       }
     });
   }
