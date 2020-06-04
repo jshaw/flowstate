@@ -39,9 +39,8 @@ const overlayCanvas = document.getElementById('overlayCanvas');
 const statusText = document.getElementById('statusText');
 
 let config = {
-    SIM_RESOLUTION: 32,
-    DYE_RESOLUTION: 256,
-    CAPTURE_RESOLUTION: 512,
+    SIM_RESOLUTION: 256,
+    DYE_RESOLUTION: 1024,
     DENSITY_DISSIPATION: 1,
     VELOCITY_DISSIPATION: 0.2,
     PRESSURE: 0.8,
@@ -49,6 +48,8 @@ let config = {
     CURL: 30,
     SPLAT_RADIUS: 0.1,
     SPLAT_FORCE: 6000,
+    SPLAT_COLOR: { r: 255, g: 255, b: 255 },
+    RAINBOW: true,
     SHADING: false,
     COLORFUL: true,
     COLOR_UPDATE_SPEED: 10,
@@ -103,7 +104,6 @@ statusText.onclick = function(evt) {
 };
 
 let touches = [];
-let splatStack = [];
 
 const { gl, ext } = getWebGLContext(canvas);
 
@@ -171,8 +171,10 @@ startGUI();
 
 let stats = new Stats();
 stats.setMode(0);
-gui.domElement.querySelector('ul').appendChild(document.createElement('li'))
-  .appendChild(stats.domElement);
+stats.domElement.style.position = "absolute";
+stats.domElement.style.left= "0px";
+stats.domElement.style.bottom = "0px";
+document.body.appendChild(stats.domElement);
 
 
 function getWebGLContext (canvas) {
@@ -266,6 +268,9 @@ function supportRenderTextureFormat (gl, internalFormat, format, type) {
 function getARoom() {
   let name = window.prompt(
     "Give your room a name using letters, numbers, -_.!~*'()\nWe'll send your there. Copy the URL and send to your friends.");
+  if (!name) {
+    return;
+  }
   let url = new URL(document.location);
   url.searchParams.set('r', encodeURIComponent(name));
   window.location.href = url.toString();
@@ -278,58 +283,62 @@ function leaveRoom() {
 }
 
 function startGUI () {
-    dat.GUI.prototype.addBasic = dat.GUI.prototype.add;
-    dat.GUI.prototype.add = function(obj, prop, ...params) {
-      let controller = this.addBasic(obj, prop, ...params);
-      controller.listen();
-      controller.onChange(function(value) {
+    dat.controllers.Controller.prototype.realtime = function(self) {
+      this.listen();
+      this.onChange(function(value) {
         if (!realTimeConfig) {
           return;
         }
         // Convert to number if it's supposed to be one: dat.gui seems to
         // return the numbers for *_RESOLUTION choosers as strings.
         // But isNaN(boolean) is true and we don't want to convert those.
-        realTimeConfig.get(prop).value(
+        realTimeConfig.get(this.property).value(
             isNaN(value) || typeof value === 'boolean' ? value : +value);
       });
-      return controller;
     }
-    gui = new dat.GUI({ width: 300, closeOnTop: true });
+    gui = new dat.GUI({ width: 300, closeOnTop: true, hideable: false });
     if (room) {
-      gui.addBasic({room: leaveRoom}, 'room').name(
+      gui.add({room: leaveRoom}, 'room').name(
         'Leave Room ' + room);
     } else {
-      gui.addBasic({room: getARoom}, 'room').name('Get A Room');
+      gui.add({room: getARoom}, 'room').name('Get A Room');
     }
-    gui.add(config, 'DYE_RESOLUTION', { '1024': 1024, '512': 512, '256': 256, '128': 128, '64': 64 }).name('quality').onFinishChange(initFramebuffers);
-    gui.add(config, 'SIM_RESOLUTION', { '8': 8, '16': 16, '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers);
-    gui.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion');
-    gui.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('velocity diffusion');
-    gui.add(config, 'PRESSURE', 0.0, 1.0).name('pressure');
-    gui.add(config, 'CURL', 0, 50).name('vorticity').step(1);
-    gui.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('splat radius');
-    gui.add(config, 'SPLAT_FORCE', 0, 12000).name('splat velocity');
-    gui.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords);
-    gui.add(config, 'COLORFUL').name('colorful');
-    pauseController = gui.add(config, 'PAUSED').name('paused');
 
-    gui.addBasic({ fun: () => {
-        splatStack.push(parseInt(Math.random() * 20) + 5);
-    } }, 'fun').name('Random splats');
+    let myFolder = gui.addFolder('My Settings');
+    myFolder.open();
+    let rainbow = myFolder.add(config, 'RAINBOW').name('random color');
+    let colorController = myFolder.addColor(config, 'SPLAT_COLOR').name('splat color');
+    let colorful = myFolder.add(config, 'COLORFUL').name('shifting color');
+    rainbow.onChange((value) => {
+      colorController.domElement.parentElement.parentElement.hidden = value;
+      colorful.domElement.parentElement.parentElement.hidden = !value;
 
-    let bloomFolder = gui.addFolder('Bloom');
-    bloomFolder.add(config, 'BLOOM').name('enabled').onFinishChange(updateKeywords);
-    bloomFolder.add(config, 'BLOOM_INTENSITY', 0.1, 2.0).name('intensity');
-    bloomFolder.add(config, 'BLOOM_THRESHOLD', 0.0, 1.0).name('threshold');
+    });
+    rainbow.__onChange(config.RAINBOW);
+    myFolder.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('splat radius');
+    myFolder.add(config, 'SPLAT_FORCE', 0, 12000).name('splat velocity');
 
-    let sunraysFolder = gui.addFolder('Sunrays');
-    sunraysFolder.add(config, 'SUNRAYS').name('enabled').onFinishChange(updateKeywords);
-    sunraysFolder.add(config, 'SUNRAYS_WEIGHT', 0.3, 1.0).name('weight');
+    let groupFolder = gui.addFolder('Shared Settings');
+    groupFolder.open();
+    groupFolder.add(config, 'DYE_RESOLUTION', { '1024': 1024, '512': 512, '256': 256, '128': 128, '64': 64 }).name('quality').onFinishChange(initFramebuffers).realtime();
+    groupFolder.add(config, 'SIM_RESOLUTION', { '8': 8, '16': 16, '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers).realtime();
+    groupFolder.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion').realtime();
+    groupFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('velocity diffusion').realtime();
+    groupFolder.add(config, 'PRESSURE', 0.0, 1.0).name('pressure').realtime();
+    groupFolder.add(config, 'CURL', 0, 50).name('vorticity').step(1).realtime();
+    pauseController = groupFolder.add(config, 'PAUSED').name('paused').realtime();
+    groupFolder.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords).realtime();
+    groupFolder.addColor(config, 'BACK_COLOR').name('background color').realtime();
 
-    let captureFolder = gui.addFolder('Capture');
-    captureFolder.addColor(config, 'BACK_COLOR').name('background color');
-    captureFolder.add(config, 'TRANSPARENT').name('transparent');
-    captureFolder.addBasic({ fun: captureScreenshot }, 'fun').name('take screenshot');
+    let bloomFolder = groupFolder.addFolder('Bloom');
+    bloomFolder.add(config, 'BLOOM').name('enabled').onFinishChange(updateKeywords).realtime();
+    bloomFolder.add(config, 'BLOOM_INTENSITY', 0.1, 2.0).name('intensity').realtime();
+    bloomFolder.add(config, 'BLOOM_THRESHOLD', 0.0, 1.0).name('threshold').realtime();
+
+    let sunraysFolder = groupFolder.addFolder('Sunrays');
+    sunraysFolder.add(config, 'SUNRAYS').name('enabled').onFinishChange(updateKeywords).realtime();
+    sunraysFolder.add(config, 'SUNRAYS_WEIGHT', 0.3, 1.0).name('weight').realtime();
+    gui.add({ fun: captureScreenshot }, 'fun').name('download');
 
     if (isMobile()) {
         gui.close();
@@ -341,7 +350,7 @@ function isMobile () {
 }
 
 function captureScreenshot () {
-    let res = getResolution(config.CAPTURE_RESOLUTION);
+    let res = getResolution(1024);
     let target = createFBO(res.width, res.height, ext.formatRGBA.internalFormat, ext.formatRGBA.format, ext.halfFloatTexType, gl.NEAREST);
     render(target);
 
@@ -350,7 +359,7 @@ function captureScreenshot () {
 
     let captureCanvas = textureToCanvas(texture, target.width, target.height);
     let datauri = captureCanvas.toDataURL();
-    downloadURI('fluid.png', datauri);
+    downloadURI('flowstate.png', datauri);
     URL.revokeObjectURL(datauri);
 }
 
@@ -1279,7 +1288,7 @@ function resizeCanvas(forceInit) {
 }
 
 function updateColors (dt) {
-    if (!config.COLORFUL) return;
+    if (!config.RAINBOW || !config.COLORFUL) return;
 
     colorUpdateTimer += dt * config.COLOR_UPDATE_SPEED;
     if (colorUpdateTimer >= 1) {
@@ -1298,9 +1307,6 @@ function updateColors (dt) {
 }
 
 function applyInputs () {
-    if (splatStack.length > 0)
-        multipleSplats(splatStack.pop());
-
     touches.forEach(p => {
         if (!p.pos || !p.color) {
           return;
@@ -1517,20 +1523,6 @@ function blur (target, temp, iterations) {
     }
 }
 
-function multipleSplats (amount) {
-    for (let i = 0; i < amount; i++) {
-        const color = generateColor();
-        color.r *= 10.0;
-        color.g *= 10.0;
-        color.b *= 10.0;
-        const x = Math.random();
-        const y = Math.random();
-        const dx = 1000 * (Math.random() - 0.5);
-        const dy = 1000 * (Math.random() - 0.5);
-        splat({x: x, y: y}, {x: x, y: y}, color);
-    }
-}
-
 function splat(pos, previous, color) {
     gl.viewport(0, 0, velocity.width, velocity.height);
     splatProgram.bind();
@@ -1672,11 +1664,12 @@ window.addEventListener('keydown', e => {
     if (e.code === 'KeyP')
         // Change the controller setting so realTimeConfig is updated properly
         pauseController.setValue(!pauseController.getValue());
-    if (e.key === ' ')
-        splatStack.push(parseInt(Math.random() * 20) + 5);
 });
 
 function generateColor () {
+    if (!config.RAINBOW) {
+        return normalizeColor(config.SPLAT_COLOR);
+    }
     let c = HSVtoRGB(Math.random(), Math.random(), 1.0);
     return c;
 }
