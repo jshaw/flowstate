@@ -37,6 +37,7 @@ let sunraysTemp;
 const canvas = document.getElementById('mainCanvas');
 const overlayCanvas = document.getElementById('overlayCanvas');
 const statusText = document.getElementById('statusText');
+let xOffset = 0, yOffset = 0;
 
 let config = {
     SIM_RESOLUTION: 256,
@@ -1255,18 +1256,21 @@ function resizeCanvas(forceInit) {
     height = Math.round(width / config.ASPECT_RATIO);
   }
 
-  let x;
   let guiLoc = gui.domElement.getBoundingClientRect();
   if (width > guiLoc.x || window.innerWidth / 2 + width / 2 <= guiLoc.x) {
     // GUI needs to overlap canvas or canvas will fit centered without overlap
-    x = Math.round(window.innerWidth / 2 - width / 2);
+    xOffset = Math.round(window.innerWidth / 2 - width / 2);
   } else {
     // Canvas will fit off-center without overlapping GUI
-    x = Math.round(guiLoc.x / 2 - width / 2);
+    xOffset = Math.round(guiLoc.x / 2 - width / 2);
   }
-  x += 'px';
-  canvas.style.left = x;
-  overlayCanvas.style.left = x;
+
+  yOffset = Math.round(window.innerHeight / 2 - height / 2);
+
+  canvas.style.left = xOffset + 'px';
+  canvas.style.top = yOffset + 'px';
+  overlayCanvas.style.left = xOffset + 'px';
+  overlayCanvas.style.top = yOffset + 'px';
 
   // Make sure GUI is on top
   gui.domElement.style.zIndex = 100;
@@ -1621,14 +1625,16 @@ window.addEventListener('mouseup', () => {
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     for (const touch of e.changedTouches) {
-      touchstart(touch.identifier, touch.pageX, touch.pageY);
+      touchstart(
+        touch.identifier, touch.pageX - xOffset, touch.pageY - yOffset);
     };
 });
 
 canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     for (const touch of e.changedTouches) {
-      touchmove(touch.identifier, touch.pageX, touch.pageY);
+      touchmove(
+        touch.identifier, touch.pageX - xOffset, touch.pageY - yOffset);
     };
 }, false);
 
