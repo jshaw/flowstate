@@ -1,8 +1,6 @@
-# WebGL Fluid Simulation
+# FlowState 
 
-[Play here](https://paveldogreat.github.io/WebGL-Fluid-Simulation/)
-
-<img src="/screenshot.jpg?raw=true" width="880">
+[Play here](https://flowstate.revoltlabs.co/)
 
 ## References
 
