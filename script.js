@@ -181,8 +181,11 @@ let gui;
 let pauseController;
 startGUI();
 
-// Show the welcome modal initially
-modal.style.display = 'block';
+// Show the welcome modal if we haven't seen it before
+if (!localStorage.getItem('welcomeModalShown')) {
+  modal.style.display = 'block';
+  localStorage.setItem('welcomeModalShown', 'v1');
+}
 
 let stats = new Stats();
 stats.setMode(0);
