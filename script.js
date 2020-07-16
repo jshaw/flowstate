@@ -177,6 +177,9 @@ Convergence.connectAnonymously(convergenceHost)
         if (key == 'ASPECT_RATIO') {
           resizeCanvas();
         }
+        if (key == 'DYE_RESOLUTION' || key == 'SIM_RESOLUTION') {
+          initFramebuffers();
+        }
       });
     })
     .catch((error) => {
