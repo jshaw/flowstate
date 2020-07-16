@@ -177,8 +177,11 @@ Convergence.connectAnonymously(convergenceHost)
         if (key == 'ASPECT_RATIO') {
           resizeCanvas();
         }
-        if (key == 'DYE_RESOLUTION' || key == 'SIM_RESOLUTION') {
+        if (['DYE_RESOLUTION', 'SIM_RESOLUTION'].includes(key)) {
           initFramebuffers();
+        }
+        if (['SHADING', 'BLOOM', 'SUNRAYS'].includes(key)) {
+          updateKeywords();
         }
       });
     })
