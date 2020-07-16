@@ -118,7 +118,10 @@ statusText.onclick = function(evt) {
 modalClose.onclick = function(evt) {
   modal.style.display = "none";
 }
-window.onclick = function(evt) {
+// Click events on iOS don't work on window, so use the modal element itself
+modal.onclick = function(evt) {
+  // This makes only clicks on the shaded background close the modal,
+  // not clicks on its child elements (header, body, etc)
   if (evt.target == modal) {
     modal.style.display = "none";
   }
