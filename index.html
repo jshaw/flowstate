@@ -43,6 +43,11 @@
                 -ms-user-select: none; /* Internet Explorer/Edge */
                 user-select: none; /* Non-prefixed version, currently
                               supported by Chrome, Edge, Opera and Firefox */
+                font-family: "Gill Sans", sans-serif;
+            }
+
+            a:link {
+              color: #d9d9d9;
             }
 
             body {
@@ -135,12 +140,86 @@
             .link img {
                 width: 100%;
             }
+
+            /* Modal Header */
+            .modal-header {
+              padding: 2px 16px;
+              background-color: #7a7a7a;
+              color: white;
+            }
+
+            /* Modal Body */
+            .modal-body {
+              padding: 2px 16px;
+              background-color: #4f4f4f;
+              color: white;
+            }
+
+            /* Modal Footer */
+            .modal-footer {
+              padding: 16px 16px;
+              background-color: #7a7a7a;
+              color: white;
+            }
+
+            /* Modal Content */
+            .modal-content {
+              position: relative;
+              background-color: #fefefe;
+              margin: auto;
+              margin-bottom: 20%;
+              padding: 0;
+              border: 2px solid #000;
+              border-radius: 25px;
+              overflow: hidden;
+              width: 80%;
+              max-width: 800px;
+              box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+              animation-name: animatetop;
+              animation-duration: 0.4s;
+            }
+
+            .modal {
+              z-index:4;
+              display:none;
+              padding-top: 10%;
+              position:fixed;
+              left:0;
+              top:0;
+              width: 100%;
+              height:100%;
+              overflow:auto;
+              background-color:rgb(0,0,0);
+              background-color:rgba(0,0,0,0.4)
+            }
+
+            /* Add Animation */
+            @keyframes animatetop {
+              from {top: -300px; opacity: 0}
+              to {top: 0; opacity: 1}
+            }
         </style>
     </head>
     <body>
         <span id="statusText"></span>
         <canvas id="overlayCanvas"></canvas>
         <canvas id="mainCanvas"></canvas>
+        <!-- Modal content -->
+        <div id="myModal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Welcome to FlowState!</h2>
+          </div>
+          <div class="modal-body">
+            <p>FlowState is a real-time collaborative art project. Open this page in another browser tab, on a smartphone/tablet, or send the link to your friends. Everyone's touches appear on the shared fluid canvas.</p>
+            <p>Use FlowState to calm yourself, "dance" with your socially-distant friends, or as a shared drawing space. Click <b>Get A Room</b> to create your own canvas and share the link with collaborators. <b>Shared Settings</b> affect the appearance/behavior of the canvas for everyone while <b>My Settings</b> affect only the touches you add.</p>
+            <p>FlowState is a work in progress. Send <a href="mailto:grant@revoltlabs.co">Grant</a> thoughts, suggestions, and bugs. FlowState also outputs to an LED wall as a socially distanced interactive art installation.</p>
+          </div>
+          <div class="modal-footer">
+            <button id="modalClose">Got it</button>
+          </div>
+        </div>
+        </div>
         <script src="./rxjs.umd.min.js"></script>
         <script src="./convergence.global.min.js"></script>
         <script src="./opc.js"></script>

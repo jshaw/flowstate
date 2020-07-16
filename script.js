@@ -37,6 +37,8 @@ let sunraysTemp;
 const canvas = document.getElementById('mainCanvas');
 const overlayCanvas = document.getElementById('overlayCanvas');
 const statusText = document.getElementById('statusText');
+const modal = document.getElementById("myModal");
+const modalClose = document.getElementById("modalClose");
 let xOffset = 0, yOffset = 0;
 
 let config = {
@@ -102,6 +104,14 @@ document.onkeydown = function(evt) {
 statusText.onclick = function(evt) {
   opc.toggleConnection();
 };
+modalClose.onclick = function(evt) {
+  modal.style.display = "none";
+}
+window.onclick = function(evt) {
+  if (evt.target == modal) {
+    modal.style.display = "none";
+  }
+}
 
 let touches = [];
 
@@ -171,10 +181,13 @@ let gui;
 let pauseController;
 startGUI();
 
+// Show the welcome modal initially
+modal.style.display = 'block';
+
 let stats = new Stats();
 stats.setMode(0);
 stats.domElement.style.position = "absolute";
-stats.domElement.style.left= "0px";
+stats.domElement.style.right = "0px";
 stats.domElement.style.bottom = "0px";
 document.body.appendChild(stats.domElement);
 stats.domElement.hidden = true;
@@ -342,6 +355,7 @@ function startGUI () {
     sunraysFolder.add(config, 'SUNRAYS').name('enabled').onFinishChange(updateKeywords).realtime();
     sunraysFolder.add(config, 'SUNRAYS_WEIGHT', 0.3, 1.0).name('weight').realtime();
     gui.add({ fun: captureScreenshot }, 'fun').name('download');
+    gui.add({ fun: () => { modal.style.display = 'block'; }}, 'fun').name('show intro');
 
     if (isMobile()) {
         gui.close();
@@ -1273,7 +1287,7 @@ function resizeCanvas(forceInit) {
   overlayCanvas.style.top = yOffset + 'px';
 
   // Make sure GUI is on top
-  gui.domElement.style.zIndex = 100;
+  gui.domElement.style.zIndex = 3;
 
   width += 'px';
   height += 'px';
