@@ -71,6 +71,12 @@ let config = {
     ASPECT_RATIO: window.innerWidth / window.innerHeight,
 }
 
+let newRoomConfig = localStorage.getItem('newRoomConfig');
+if (newRoomConfig) {
+  // Seed config for this new room with previous room's config.
+  config = JSON.parse(newRoomConfig);
+  localStorage.removeItem('newRoomConfig');
+}
 
 let opc = new OPC(
   // For now, only clients on the local network with brickolage.local connect
@@ -290,6 +296,10 @@ function getARoom() {
   if (!name) {
     return;
   }
+
+  // Remember current config in localStorage to seed the new room
+  localStorage.setItem('newRoomConfig', JSON.stringify(config));
+
   let url = new URL(document.location);
   url.searchParams.set('r', encodeURIComponent(name));
   window.location.href = url.toString();
