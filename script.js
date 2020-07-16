@@ -68,7 +68,6 @@ let config = {
     SUNRAYS: false,
     SUNRAYS_RESOLUTION: 196,
     SUNRAYS_WEIGHT: 1.0,
-    ASPECT_RATIO: window.innerWidth / window.innerHeight,
 }
 
 let newRoomConfig = localStorage.getItem('newRoomConfig');
@@ -77,6 +76,12 @@ if (newRoomConfig) {
   config = JSON.parse(newRoomConfig);
   localStorage.removeItem('newRoomConfig');
 }
+
+// Set aspect ratio after any newRoomConfig so we always start with our
+// current window's aspect ratio if we're the first in the room.
+// (No need to keep the aspect ratio of the default room when we start
+// our own.)
+config.ASPECT_RATIO = window.innerWidth / window.innerHeight;
 
 let opc = new OPC(
   // For now, only clients on the local network with brickolage.local connect
