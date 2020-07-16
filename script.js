@@ -316,6 +316,7 @@ function startGUI () {
       });
     }
     gui = new dat.GUI({ width: 300, closeOnTop: true, hideable: false });
+    gui.add({ fun: () => { modal.style.display = 'block'; }}, 'fun').name('Show Intro');
     if (room) {
       gui.add({room: leaveRoom}, 'room').name(
         'Leave Room ' + room);
@@ -357,8 +358,7 @@ function startGUI () {
     let sunraysFolder = groupFolder.addFolder('Sunrays');
     sunraysFolder.add(config, 'SUNRAYS').name('enabled').onFinishChange(updateKeywords).realtime();
     sunraysFolder.add(config, 'SUNRAYS_WEIGHT', 0.3, 1.0).name('weight').realtime();
-    gui.add({ fun: captureScreenshot }, 'fun').name('download');
-    gui.add({ fun: () => { modal.style.display = 'block'; }}, 'fun').name('show intro');
+    gui.add({ fun: captureScreenshot }, 'fun').name('Download');
 
     if (isMobile()) {
         gui.close();
