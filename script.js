@@ -351,7 +351,7 @@ function startGUI () {
     let myFolder = gui.addFolder('My Settings');
     myFolder.open();
     let rainbow = myFolder.add(config, 'RAINBOW').name('random color');
-    let colorController = myFolder.addColor(config, 'SPLAT_COLOR').name('splat color');
+    let colorController = myFolder.addColor(config, 'SPLAT_COLOR').name('brush color');
     let colorful = myFolder.add(config, 'COLORFUL').name('shifting color');
     rainbow.onChange((value) => {
       colorController.domElement.parentElement.parentElement.hidden = value;
@@ -359,15 +359,15 @@ function startGUI () {
 
     });
     rainbow.__onChange(config.RAINBOW);
-    myFolder.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('splat radius');
-    myFolder.add(config, 'SPLAT_FORCE', 0, 12000).name('splat force');
+    myFolder.add(config, 'SPLAT_RADIUS', 0.001, 1.0).name('brush size');
+    myFolder.add(config, 'SPLAT_FORCE', 0, 12000).name('brush force');
 
     let groupFolder = gui.addFolder('Shared Settings');
     groupFolder.open();
     groupFolder.add(config, 'DYE_RESOLUTION', { '1024': 1024, '512': 512, '256': 256, '128': 128, '64': 64 }).name('quality').onFinishChange(initFramebuffers).realtime();
     groupFolder.add(config, 'SIM_RESOLUTION', { '8': 8, '16': 16, '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers).realtime();
-    groupFolder.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('density diffusion').realtime();
-    groupFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('velocity diffusion').realtime();
+    groupFolder.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('fadeout speed').realtime();
+    groupFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('viscosity').realtime();
     groupFolder.add(config, 'PRESSURE', 0.0, 1.0).name('pressure').realtime();
     groupFolder.add(config, 'CURL', 0, 50).name('vorticity').step(1).realtime();
     pauseController = groupFolder.add(config, 'PAUSED').name('paused').realtime();
