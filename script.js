@@ -384,16 +384,16 @@ function startGUI () {
 
     let groupFolder = gui.addFolder('Shared Settings');
     groupFolder.open();
+    pauseController = groupFolder.add(config, 'PAUSED').name('paused');
+    pauseController.realtime();
     groupFolder.add(config, 'DYE_RESOLUTION', { '1024': 1024, '512': 512, '256': 256, '128': 128, '64': 64 }).name('quality').onFinishChange(initFramebuffers).realtime();
     groupFolder.add(config, 'SIM_RESOLUTION', { '8': 8, '16': 16, '32': 32, '64': 64, '128': 128, '256': 256 }).name('sim resolution').onFinishChange(initFramebuffers).realtime();
     groupFolder.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('fadeout speed').realtime();
     groupFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('viscosity').realtime();
     groupFolder.add(config, 'PRESSURE', 0.0, 1.0).name('pressure').realtime();
-    groupFolder.add(config, 'CURL', 0, 50).name('vorticity').step(1).realtime();
-    pauseController = groupFolder.add(config, 'PAUSED').name('paused');
-    pauseController.realtime();
-    groupFolder.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords).realtime();
+    groupFolder.add(config, 'CURL', 0, 50).name('curl').step(1).realtime();
     groupFolder.addColor(config, 'BACK_COLOR').name('background color').realtime();
+    groupFolder.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords).realtime();
 
     let bloomFolder = groupFolder.addFolder('Bloom');
     bloomFolder.add(config, 'BLOOM').name('enabled').onFinishChange(updateKeywords).realtime();
