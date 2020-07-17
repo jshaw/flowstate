@@ -360,7 +360,7 @@ function startGUI () {
 
     });
     rainbow.__onChange(config.RAINBOW);
-    myFolder.add(config, 'SPLAT_RADIUS', 0.001, 1.0).name('brush size');
+    myFolder.add(config, 'SPLAT_RADIUS', 0.001, 0.5, 0.001).name('brush size');
     myFolder.add(config, 'SPLAT_FORCE', 0, 12000).name('brush force');
 
     let groupFolder = gui.addFolder('Shared Settings');
