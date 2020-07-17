@@ -165,8 +165,9 @@ Convergence.connectAnonymously(convergenceHost)
       realTimeConfig = model.elementAt('config');
       // Populate local config with remote values (redundant if it was created)
       realTimeConfig.forEach((value, key) => { config[key] = value.value(); });
-      // And resize to pick up changes
+      // And resize/updateKeywords to pick up changes
       resizeCanvas();
+      updateKeywords();
       // But if we have an aspect ratio from OPC, set that on config
       if (config.ASPECT_RATIO_FROM_OPC) {
         realTimeConfig.get('ASPECT_RATIO').value(config.ASPECT_RATIO_FROM_OPC);
