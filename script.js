@@ -53,7 +53,7 @@ let config = {
     SPLAT_FORCE: 6000,
     SPLAT_COLOR: { r: 255, g: 255, b: 255 },
     RAINBOW: true,
-    SHADING: true,
+    SHADING: false,
     COLORFUL: true,
     COLOR_UPDATE_SPEED: 10,
     PAUSED: false,
