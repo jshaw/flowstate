@@ -192,14 +192,37 @@ Convergence.connectAnonymously(convergenceHost)
     domain.activities().join(room || 'flowstate-default').then(activity => {
       realTimeActivity = activity;
       realTimeActivity.on('state_delta', realTimeActivityChange);
+      realTimeActivity.on('session_joined', realTimeParticipantChange);
+      realTimeActivity.on('session_left', realTimeParticipantChange);
+      realTimeParticipantChange();
     });
   })
   .catch((error) => {
     console.error("Could not connect: " + error);
   });
 
+function setRoomName(count) {
+  if (!roomController) {
+    return;
+  }
+  let name = room ? 'Leave Room ' + room : 'Get A Room';
+  if (count) {
+    name += ` (${count} here)`;
+  }
+  roomController.name(name);
+}
+
+function realTimeParticipantChange(evt) {
+  let count = realTimeActivity.participants().length;
+  if (evt && evt.name == 'session_left') {
+    count--;
+  }
+  setRoomName(count);
+}
+
 let gui;
 let pauseController;
+let roomController = null;
 startGUI();
 
 // Show the welcome modal if we haven't seen it before
@@ -342,12 +365,8 @@ function startGUI () {
     }
     gui = new dat.GUI({ width: 300, closeOnTop: true, hideable: false });
     gui.add({ fun: () => { modal.style.display = 'block'; }}, 'fun').name('Show Intro');
-    if (room) {
-      gui.add({room: leaveRoom}, 'room').name(
-        'Leave Room ' + room);
-    } else {
-      gui.add({room: getARoom}, 'room').name('Get A Room');
-    }
+    roomController = gui.add({room: room ? leaveRoom : getARoom}, 'room');
+    setRoomName();
 
     let myFolder = gui.addFolder('My Settings');
     myFolder.open();
