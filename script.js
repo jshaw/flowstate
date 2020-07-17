@@ -370,7 +370,8 @@ function startGUI () {
     groupFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('viscosity').realtime();
     groupFolder.add(config, 'PRESSURE', 0.0, 1.0).name('pressure').realtime();
     groupFolder.add(config, 'CURL', 0, 50).name('vorticity').step(1).realtime();
-    pauseController = groupFolder.add(config, 'PAUSED').name('paused').realtime();
+    pauseController = groupFolder.add(config, 'PAUSED').name('paused');
+    pauseController.realtime();
     groupFolder.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords).realtime();
     groupFolder.addColor(config, 'BACK_COLOR').name('background color').realtime();
 
@@ -1728,9 +1729,10 @@ function realTimeActivityChange(evt) {
 }
 
 window.addEventListener('keydown', e => {
-    if (e.code === 'KeyP')
+    if (e.code === 'KeyP') {
         // Change the controller setting so realTimeConfig is updated properly
         pauseController.setValue(!pauseController.getValue());
+    }
 });
 
 function generateColor () {
