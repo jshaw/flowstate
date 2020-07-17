@@ -833,7 +833,7 @@ const sunraysShader = compileShader(gl.FRAGMENT_SHADER, `
     }
 `);
 
-const splatShader = compileShader(gl.FRAGMENT_SHADER, `
+let splatShaderCode = `
     precision highp float;
     precision highp sampler2D;
 
@@ -867,7 +867,15 @@ const splatShader = compileShader(gl.FRAGMENT_SHADER, `
 
         gl_FragColor = vec4(mix(base, color, exp(-dist / radius)), 1.0);
     }
-`);
+`
+if (gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS) <= 64) {
+  // Hacky fix seen on older iOS devices: everything works for a few seconds,
+  // then the webgl context disappears without any errors.
+  // Removing the "previous" uniform we added for continuous lines fixes it.
+  splatShaderCode = splatShaderCode.replace('uniform vec2 previous;', '');
+  splatShaderCode = splatShaderCode.replace(/previous/g, 'point');
+}
+const splatShader = compileShader(gl.FRAGMENT_SHADER, splatShaderCode);
 
 const advectionShader = compileShader(gl.FRAGMENT_SHADER, `
     precision highp float;
