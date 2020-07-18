@@ -330,7 +330,7 @@ function supportRenderTextureFormat (gl, internalFormat, format, type) {
 
 function getARoom() {
   let name = window.prompt(
-    "Give your room a name using letters, numbers, -_.!~*'()\nWe'll send your there. Copy the URL and send to your friends.");
+    "Give your room a name using letters, numbers, -_.!~*'()\nWe'll send your there.\nClick Share With Friends to invite collaborators.");
   if (!name) {
     return;
   }
@@ -364,7 +364,7 @@ function startGUI () {
       });
     }
     gui = new dat.GUI({ width: 300, closeOnTop: true, hideable: false });
-    gui.add({ fun: () => { modal.style.display = 'block'; }}, 'fun').name('Show Intro');
+    gui.add({ fun: () => { modal.style.display = 'block'; }}, 'fun').name('Share With Friends');
     roomController = gui.add({room: room ? leaveRoom : getARoom}, 'room');
     setRoomName();
 
