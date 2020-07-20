@@ -888,17 +888,7 @@ let splatShaderCode = `
         gl_FragColor = vec4(mix(base, color, exp(-dist / radius)), 1.0);
     }
 `
-// https://stackoverflow.com/questions/8348139/detect-ios-version-less-than-5-with-javascript
-function iOSversion() {
-  if (/iP(hone|od|ad)/.test(navigator.platform)) {
-    // supports iOS 2.0 and later: <http://bit.ly/TJjs1V>
-    var v = (navigator.appVersion).match(/OS (\d+)_(\d+)_?(\d+)?/);
-    return [parseInt(v[1], 10), parseInt(v[2], 10), parseInt(v[3] || 0, 10)];
-  }
-}
-const version = iOSversion();
-
-if (version && version[0] <= 12) {
+if (gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS) <= 64) {
   // Hacky fix seen on older iOS devices: everything works for a few seconds,
   // then the webgl context disappears without any errors.
   // Removing the "previous" uniform we added for continuous lines fixes it.
