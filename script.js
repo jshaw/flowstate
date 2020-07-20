@@ -871,6 +871,10 @@ const splatShader = compileShader(gl.FRAGMENT_SHADER, `
 
         vec2 AB = point.xy - previous;
         vec2 BE = vUv - point;
+        // See hack in splat() to fix the silent webgl crash, which doesn't
+        // manifest if we substitue point for previous here, strangely.
+        // Something about 2 different uniforms with the same values and the
+        // math performed on them below.
         vec2 AE = vUv - previous;
         AB.x *= aspectRatio;
         BE.x *= aspectRatio;
@@ -1600,7 +1604,12 @@ function splat(pos, previous, touch) {
     gl.uniform1i(splatProgram.uniforms.uTarget, velocity.read.attach(0));
     gl.uniform1f(splatProgram.uniforms.aspectRatio, canvas.width / canvas.height);
     gl.uniform2f(splatProgram.uniforms.point, pos.x, pos.y);
-    gl.uniform2f(splatProgram.uniforms.previous, previous.x, previous.y);
+    // Hack for older iOS devices: Passing equal values for point and previous
+    // cause the webgl runtime to crash silently on my iPhone 5S and iPad Air.
+    // Adding super-tiny deltas to previous fixes the issue and doesn't affect
+    // appearance. TODO: Actually debug this behavior in splatShader.
+    gl.uniform2f(splatProgram.uniforms.previous,
+                 previous.x+0.0000001, previous.y+0.0000001);
     gl.uniform3f(splatProgram.uniforms.color, (pos.x-previous.x) * touch.force, (pos.y-previous.y) * touch.force, 0.0);
     gl.uniform1f(splatProgram.uniforms.radius, correctRadius(touch.radius / 100.0));
     blit(velocity.write.fbo);
