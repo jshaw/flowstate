@@ -1283,7 +1283,12 @@ function updateKeywords () {
 updateKeywords();
 
 resizeCanvas(true);
-window.onresize = resizeCanvas;
+window.onresize = function() {
+  resizeCanvas();
+  // iOS sometimes gives us the old value on a rotate/resize event,
+  // so re-check the size in 500ms
+  window.setTimeout(resizeCanvas, 500);
+}
 
 let lastUpdateTime = Date.now();
 let colorUpdateTimer = 0.0;
