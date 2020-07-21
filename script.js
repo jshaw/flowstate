@@ -1381,7 +1381,9 @@ function updateColors (dt) {
 function applyInputs () {
     touches.forEach(p => {
         // "complete" boolean shortcuts all these other tests to save time?
-        if (!p.complete && (!p.pos || !p.color || !p.radius || !p.force)) {
+        if (!p.complete && (!p.pos || !p.color || !p.radius ||
+            // force can be 0 which is valid and should not trigger this test
+            p.force === undefined)) {
           return;
         }
         // If we got this far, it's complete, so set the flag.
