@@ -372,6 +372,8 @@ function startGUI () {
     myFolder.open();
     let rainbow = myFolder.add(config, 'RAINBOW').name('random color');
     let colorController = myFolder.addColor(config, 'SPLAT_COLOR').name('brush color');
+    // Disable keyboard input
+    colorController.domElement.querySelector('input').readOnly = 'readonly';
     let colorful = myFolder.add(config, 'COLORFUL').name('shifting color');
     rainbow.onChange((value) => {
       colorController.domElement.parentElement.parentElement.hidden = value;
@@ -392,7 +394,10 @@ function startGUI () {
     groupFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('viscosity').realtime();
     groupFolder.add(config, 'PRESSURE', 0.0, 1.0).name('pressure').realtime();
     groupFolder.add(config, 'CURL', 0, 50).name('curl').step(1).realtime();
-    groupFolder.addColor(config, 'BACK_COLOR').name('background color').realtime();
+    let backColor = groupFolder.addColor(config, 'BACK_COLOR').name('background color')
+    backColor.realtime();
+    // Disable keyboard input
+    backColor.domElement.querySelector('input').readOnly = 'readonly';
     groupFolder.add(config, 'SHADING').name('shading').onFinishChange(updateKeywords).realtime();
 
     let bloomFolder = groupFolder.addFolder('Bloom');
