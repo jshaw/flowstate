@@ -49,7 +49,7 @@ let config = {
     PRESSURE: 0.8,
     PRESSURE_ITERATIONS: 20,
     CURL: 30,
-    SPLAT_RADIUS: 0.01,
+    SPLAT_RADIUS: 5,
     SPLAT_FORCE: 6000,
     SPLAT_COLOR: { r: 255, g: 255, b: 255 },
     RAINBOW: true,
@@ -379,7 +379,7 @@ function startGUI () {
 
     });
     rainbow.__onChange(config.RAINBOW);
-    myFolder.add(config, 'SPLAT_RADIUS', 0.001, 0.5, 0.001).name('brush size');
+    myFolder.add(config, 'SPLAT_RADIUS', 1, 15).name('brush size');
     myFolder.add(config, 'SPLAT_FORCE', 0, 12000).name('brush force');
 
     let groupFolder = gui.addFolder('Shared Settings');
@@ -1613,7 +1613,7 @@ function splat(pos, previous, touch) {
     gl.uniform2f(splatProgram.uniforms.previous,
                  previous.x+0.0000001, previous.y+0.0000001);
     gl.uniform3f(splatProgram.uniforms.color, (pos.x-previous.x) * touch.force, (pos.y-previous.y) * touch.force, 0.0);
-    gl.uniform1f(splatProgram.uniforms.radius, correctRadius(touch.radius / 100.0));
+    gl.uniform1f(splatProgram.uniforms.radius, correctRadius(Math.pow(touch.radius, 3) / 1000000.0));
     blit(velocity.write.fbo);
     velocity.swap();
 
