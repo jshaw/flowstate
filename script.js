@@ -89,9 +89,8 @@ config.ASPECT_RATIO = window.innerWidth / window.innerHeight;
 // survives across reloads. It's weird and it sucks.
 // Detect this by "iphone" and "instagram" in userAgent.
 // Then everything top/bottom will be forced in 45px.
-const instaSpace = (
-  navigator.userAgent.match(/iphone/i) &&
-  navigator.userAgent.match(/instagram/i)) ? 45 : 0;
+const ua = navigator.userAgent || navigator.vendor || window.opera;
+const instaSpace = (ua.match(/iphone/i) && ua.match(/instagram/i)) ? 45 : 0;
 if (instaSpace) {
   document.getElementById('instaNotice').style.display = 'block';
   config.ASPECT_RATIO = window.innerWidth / (window.innerHeight - 2*instaSpace);
