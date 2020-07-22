@@ -93,6 +93,7 @@ const instaSpace = (
   navigator.userAgent.match(/iphone/i) &&
   navigator.userAgent.match(/instagram/i)) ? 45 : 0;
 if (instaSpace) {
+  document.getElementById('instaNotice').style.display = 'block';
   config.ASPECT_RATIO = window.innerWidth / (window.innerHeight - 2*instaSpace);
 }
 
