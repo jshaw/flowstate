@@ -83,6 +83,19 @@ if (newRoomConfig) {
 // our own.)
 config.ASPECT_RATIO = window.innerWidth / window.innerHeight;
 
+// Sad hack: Instagram's in-app browser adds ~45px chrome to the top and bottom
+// of the page--ON TOP of the page, with no way for us to handle it.
+// And scrolling to the bottom of the GUI scrolls this view, in a scroll that
+// survives across reloads. It's weird and it sucks.
+// Detect this by "iphone" and "instagram" in userAgent.
+// Then everything top/bottom will be forced in 45px.
+const instaSpace = (
+  navigator.userAgent.match(/iphone/i) &&
+  navigator.userAgent.match(/instagram/i)) ? 45 : 0;
+if (instaSpace) {
+  config.ASPECT_RATIO = window.innerWidth / (window.innerHeight - 2*instaSpace);
+}
+
 let opc = new OPC(
   // For now, only clients on the local network with brickolage.local connect
   'ws://brickolage.local:7890',
@@ -1326,6 +1339,15 @@ function calcDeltaTime () {
 function resizeCanvas(forceInit) {
   let width = window.innerWidth;
   let height = window.innerHeight;
+  let innerHeight = window.innerHeight;
+  // See declaration of instaSpace
+  if (instaSpace) {
+    height -= 2*instaSpace;
+    innerHeight -= 2*instaSpace;
+    document.body.style.height = height + 'px';
+    document.body.style.top = instaSpace + 'px';
+    gui.domElement.parentElement.style.top = instaSpace + 'px';
+  }
   if (width / height > config.ASPECT_RATIO) {
     width = Math.round(height * config.ASPECT_RATIO);
   } else {
@@ -1341,7 +1363,7 @@ function resizeCanvas(forceInit) {
     xOffset = Math.round(guiLoc.x / 2 - width / 2);
   }
 
-  yOffset = Math.round(window.innerHeight / 2 - height / 2);
+  yOffset = Math.round(innerHeight / 2 - height / 2);
 
   canvas.style.left = xOffset + 'px';
   canvas.style.top = yOffset + 'px';
@@ -1650,7 +1672,7 @@ function touchstart(id, x, y) {
     // but we know this touch has all the needed properties.
     complete: true,
     pos: { x: scaleByPixelRatio(x) / canvas.width,
-           y: 1.0 - scaleByPixelRatio(y) / canvas.height},
+           y: 1.0 - scaleByPixelRatio(y - instaSpace) / canvas.height},
     color: generateColor(),
     radius: config.SPLAT_RADIUS,
     force: config.SPLAT_FORCE
@@ -1674,7 +1696,7 @@ function touchmove(id, x, y) {
     return;
   }
   x = scaleByPixelRatio(x) / canvas.width;
-  y = 1.0 - scaleByPixelRatio(y) / canvas.height;
+  y = 1.0 - scaleByPixelRatio(y - instaSpace) / canvas.height;
   touch.history.push({x: touch.pos.x, y: touch.pos.y});
   touch.pos.x = x;
   touch.pos.y = y;
