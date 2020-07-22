@@ -377,7 +377,7 @@ function startGUI () {
       });
     }
     gui = new dat.GUI({ width: 300, closeOnTop: true, hideable: false });
-    gui.add({ fun: () => { modal.style.display = 'block'; }}, 'fun').name('Share With Friends');
+    gui.add({ fun: () => { modal.style.display = 'block'; }}, 'fun').name('Share With Friends / Info');
     roomController = gui.add({room: room ? leaveRoom : getARoom}, 'room');
     setRoomName();
 
