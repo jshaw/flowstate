@@ -1767,7 +1767,9 @@ function realTimeActivityChange(evt) {
       touches.push(touch);
     } else {
       touch = touches[idx];
-      touch.history.push(touch.pos);
+      if (touch.pos) {
+        touch.history.push(touch.pos);
+      }
     }
     evt.values.forEach((value, key) => {
       switch(key[0]) {
